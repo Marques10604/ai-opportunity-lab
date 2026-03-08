@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { BarChart3, Lightbulb, TrendingUp, Target, LineChart } from "lucide-react";
+import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { StatCard } from "@/components/StatCard";
 import { activityFeed, chartData } from "@/lib/mockData";
@@ -8,6 +9,7 @@ import { useOpportunities, useTrends, useNiches } from "@/hooks/useSupabaseData"
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 import { seedUserData } from "@/lib/seedData";
+import { DiscoveryEngine } from "@/components/DiscoveryEngine";
 
 export default function Dashboard() {
   const navigate = useNavigate();
