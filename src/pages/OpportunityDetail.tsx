@@ -67,8 +67,24 @@ export default function OpportunityDetail() {
   const handleGenerate = async () => {
     setGenerating(true);
     setSaved(false);
-    await new Promise((r) => setTimeout(r, 2200));
-    setMvpPlan(generateMvpPlan(opp));
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-mvp-plan", {
+        body: {
+          title: opp.title,
+          niche: opp.niche,
+          problem: opp.problem,
+          solution: opp.solution,
+          competition_level: opp.competition_level,
+          market_score: opp.market_score,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setMvpPlan(data);
+    } catch (err: any) {
+      console.error("MVP generation error:", err);
+      toast.error(err?.message || "Failed to generate MVP plan");
+    }
     setGenerating(false);
   };
 
