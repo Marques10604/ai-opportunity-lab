@@ -6,6 +6,7 @@ import {
   Sparkles,
   LogOut,
   FileText,
+  TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NavLink } from "@/components/NavLink";
@@ -27,6 +28,7 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Pipeline", url: "/pipeline", icon: GitBranch },
   { title: "Agent Monitor", url: "/agents", icon: Cpu },
+  { title: "Trends", url: "/trends", icon: TrendingUp },
   { title: "Opportunities", url: "/opportunities", icon: Lightbulb },
   { title: "Saved Plans", url: "/saved-plans", icon: FileText },
 ];
