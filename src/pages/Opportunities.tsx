@@ -1,10 +1,11 @@
 import { motion } from "framer-motion";
-import { recentOpportunities } from "@/lib/mockData";
+import { useOpportunities } from "@/hooks/useSupabaseData";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Lightbulb } from "lucide-react";
 
 export default function Opportunities() {
   const navigate = useNavigate();
+  const { data: opportunities, isLoading } = useOpportunities();
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -13,38 +14,41 @@ export default function Opportunities() {
         <p className="text-sm text-muted-foreground mt-1">AI-generated SaaS opportunities, ranked by potential</p>
       </div>
 
-      <div className="space-y-3">
-        {recentOpportunities.map((opp, i) => (
-          <motion.button
-            key={opp.id}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            onClick={() => navigate(`/opportunities/${opp.id}`)}
-            className="w-full rounded-xl border border-border bg-card p-5 hover:border-primary/30 transition-all flex items-center gap-4 text-left group"
-          >
-            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <Lightbulb className="h-6 w-6 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold group-hover:text-primary transition-colors">{opp.title}</p>
-              <div className="flex items-center gap-3 mt-1">
-                <span className="text-[10px] font-mono text-muted-foreground">{opp.niche}</span>
-                <span className="text-[10px] text-muted-foreground">·</span>
-                <span className="text-[10px] text-muted-foreground">Competition: {opp.competition}</span>
-                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${opp.trend === "Rising" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>{opp.trend}</span>
+      {isLoading ? (
+        <div className="text-sm text-muted-foreground">Loading...</div>
+      ) : (
+        <div className="space-y-3">
+          {opportunities?.map((opp, i) => (
+            <motion.button
+              key={opp.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              onClick={() => navigate(`/opportunities/${opp.id}`)}
+              className="w-full rounded-xl border border-border bg-card p-5 hover:border-primary/30 transition-all flex items-center gap-4 text-left group"
+            >
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <Lightbulb className="h-6 w-6 text-primary" />
               </div>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="text-right">
-                <p className="text-2xl font-bold text-primary">{opp.score}</p>
-                <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Score</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold group-hover:text-primary transition-colors">{opp.title}</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <span className="text-[10px] font-mono text-muted-foreground">{opp.niche}</span>
+                  <span className="text-[10px] text-muted-foreground">·</span>
+                  <span className="text-[10px] text-muted-foreground">Competition: {opp.competition_level}</span>
+                </div>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-            </div>
-          </motion.button>
-        ))}
-      </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">{opp.market_score}</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Score</p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </div>
+            </motion.button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

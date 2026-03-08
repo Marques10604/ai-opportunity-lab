@@ -4,7 +4,9 @@ import {
   Cpu,
   Lightbulb,
   Sparkles,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -31,6 +33,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { signOut } = useAuth();
   const isActive = (path: string) => location.pathname === path;
 
   return (
@@ -81,6 +84,9 @@ export function AppSidebar() {
               </div>
               <p className="text-[10px] text-muted-foreground">7 agents running · 142 tasks queued</p>
             </div>
+            <button onClick={signOut} className="mt-2 w-full flex items-center gap-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+              <LogOut className="h-3 w-3" /> Sign out
+            </button>
           </SidebarGroup>
         )}
       </SidebarContent>
