@@ -66,3 +66,21 @@ export function useAgents() {
     enabled: !!user,
   });
 }
+
+export function useAgentLogs() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["agent_logs", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agent_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+    refetchInterval: 5000, // poll every 5s for near-realtime
+  });
+}
