@@ -19,6 +19,7 @@ export default function Dashboard() {
   const { data: opportunities, isLoading: oppLoading } = useOpportunities();
   const { data: trends } = useTrends();
   const { data: niches } = useNiches();
+  const { data: agentLogs } = useAgentLogs();
 
   // Seed data on first login
   useEffect(() => {
