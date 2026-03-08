@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { BarChart3, Lightbulb, TrendingUp, Target, LineChart } from "lucide-react";
+import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { StatCard } from "@/components/StatCard";
 import { activityFeed, chartData } from "@/lib/mockData";
@@ -8,10 +9,12 @@ import { useOpportunities, useTrends, useNiches } from "@/hooks/useSupabaseData"
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 import { seedUserData } from "@/lib/seedData";
+import { DiscoveryEngine } from "@/components/DiscoveryEngine";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const { data: opportunities, isLoading: oppLoading } = useOpportunities();
   const { data: trends } = useTrends();
   const { data: niches } = useNiches();
@@ -25,10 +28,20 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 max-w-7xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Real-time overview of AI opportunity discovery</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Real-time overview of AI opportunity discovery</p>
+        </div>
+        <button
+          onClick={() => setDiscoveryOpen(true)}
+          className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity glow-primary"
+        >
+          <Zap className="h-4 w-4" /> Discover Opportunities
+        </button>
       </div>
+
+      <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); navigate("/opportunities"); }} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard label="Top Score" value={topScore} icon={BarChart3} trend="+12% this week" glowing />
