@@ -2,11 +2,26 @@ import { motion } from "framer-motion";
 import { BarChart3, Lightbulb, TrendingUp, Target, LineChart } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { StatCard } from "@/components/StatCard";
-import { dashboardStats, recentOpportunities, chartData, activityFeed } from "@/lib/mockData";
+import { activityFeed, chartData } from "@/lib/mockData";
 import { useNavigate } from "react-router-dom";
+import { useOpportunities, useTrends, useNiches } from "@/hooks/useSupabaseData";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect } from "react";
+import { seedUserData } from "@/lib/seedData";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { data: opportunities, isLoading: oppLoading } = useOpportunities();
+  const { data: trends } = useTrends();
+  const { data: niches } = useNiches();
+
+  // Seed data on first login
+  useEffect(() => {
+    if (user) seedUserData(user.id);
+  }, [user]);
+
+  const topScore = opportunities?.length ? Math.max(...opportunities.map(o => o.market_score ?? 0)) : 0;
 
   return (
     <div className="space-y-6 max-w-7xl">
@@ -15,23 +30,16 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground mt-1">Real-time overview of AI opportunity discovery</p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <StatCard label="Opportunity Score" value={dashboardStats.opportunityScore} icon={BarChart3} trend="+12% this week" glowing />
-        <StatCard label="Ideas Discovered" value={dashboardStats.ideasDiscovered.toLocaleString()} icon={Lightbulb} trend="+340 today" />
-        <StatCard label="Trends Detected" value={dashboardStats.trendsDetected} icon={TrendingUp} trend="+8 new" />
-        <StatCard label="Niches Analyzed" value={dashboardStats.nichesAnalyzed} icon={Target} trend="+15 today" />
-        <StatCard label="Market Predictions" value={dashboardStats.marketPredictions} icon={LineChart} trend="94% accuracy" />
+        <StatCard label="Top Score" value={topScore} icon={BarChart3} trend="+12% this week" glowing />
+        <StatCard label="Ideas Discovered" value={opportunities?.length ?? 0} icon={Lightbulb} />
+        <StatCard label="Trends Detected" value={trends?.length ?? 0} icon={TrendingUp} />
+        <StatCard label="Niches Analyzed" value={niches?.length ?? 0} icon={Target} />
+        <StatCard label="Market Predictions" value={89} icon={LineChart} trend="94% accuracy" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Chart */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="lg:col-span-2 rounded-xl border border-border bg-card p-5"
-        >
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-2 rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4">Opportunities Over Time</h3>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={chartData}>
@@ -48,10 +56,7 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 14%, 18%)" />
               <XAxis dataKey="month" tick={{ fill: "hsl(215, 12%, 50%)", fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "hsl(215, 12%, 50%)", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip
-                contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 14%, 18%)", borderRadius: 8, fontSize: 12 }}
-                labelStyle={{ color: "hsl(210, 20%, 92%)" }}
-              />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 14%, 18%)", borderRadius: 8, fontSize: 12 }} labelStyle={{ color: "hsl(210, 20%, 92%)" }} />
               <Area type="monotone" dataKey="opportunities" stroke="hsl(190, 90%, 50%)" fillOpacity={1} fill="url(#colorOpp)" strokeWidth={2} />
               <Area type="monotone" dataKey="validated" stroke="hsl(260, 70%, 60%)" fillOpacity={1} fill="url(#colorVal)" strokeWidth={2} />
             </AreaChart>
@@ -62,13 +67,7 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Activity Feed */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="rounded-xl border border-border bg-card p-5"
-        >
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4">AI Activity Feed</h3>
           <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
             {activityFeed.map((item, i) => (
@@ -85,36 +84,29 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* Recent Opportunities */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="rounded-xl border border-border bg-card"
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="rounded-xl border border-border bg-card">
         <div className="p-5 border-b border-border">
           <h3 className="text-sm font-semibold">Recent Opportunities</h3>
         </div>
-        <div className="divide-y divide-border">
-          {recentOpportunities.map((opp) => (
-            <button
-              key={opp.id}
-              onClick={() => navigate(`/opportunities/${opp.id}`)}
-              className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors text-left"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{opp.title}</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">{opp.niche} · Competition: {opp.competition}</p>
-              </div>
-              <div className="flex items-center gap-3 shrink-0 ml-4">
-                <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${opp.trend === "Rising" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>
-                  {opp.trend}
-                </span>
-                <span className="text-lg font-bold text-primary">{opp.score}</span>
-              </div>
-            </button>
-          ))}
-        </div>
+        {oppLoading ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">Loading opportunities...</div>
+        ) : (
+          <div className="divide-y divide-border">
+            {opportunities?.map((opp) => (
+              <button
+                key={opp.id}
+                onClick={() => navigate(`/opportunities/${opp.id}`)}
+                className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors text-left"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{opp.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{opp.niche} · Competition: {opp.competition_level}</p>
+                </div>
+                <span className="text-lg font-bold text-primary ml-4">{opp.market_score}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </motion.div>
     </div>
   );
