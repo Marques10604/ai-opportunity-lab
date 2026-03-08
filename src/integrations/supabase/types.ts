@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_logs: {
+        Row: {
+          action: string
+          agent_name: string
+          created_at: string
+          detail: string | null
+          id: string
+          level: string
+          pipeline_run_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          agent_name: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          level?: string
+          pipeline_run_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          agent_name?: string
+          created_at?: string
+          detail?: string | null
+          id?: string
+          level?: string
+          pipeline_run_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       agents: {
         Row: {
           agent_name: string
