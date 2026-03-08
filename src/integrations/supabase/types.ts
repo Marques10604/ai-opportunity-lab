@@ -41,6 +41,53 @@ export type Database = {
         }
         Relationships: []
       }
+      mvp_plans: {
+        Row: {
+          core_features: Json
+          created_at: string
+          id: string
+          monetization: string
+          opportunity_id: string
+          product_concept: string
+          roadmap: Json
+          tech_stack: Json
+          ui_structure: Json
+          user_id: string
+        }
+        Insert: {
+          core_features?: Json
+          created_at?: string
+          id?: string
+          monetization: string
+          opportunity_id: string
+          product_concept: string
+          roadmap?: Json
+          tech_stack?: Json
+          ui_structure?: Json
+          user_id: string
+        }
+        Update: {
+          core_features?: Json
+          created_at?: string
+          id?: string
+          monetization?: string
+          opportunity_id?: string
+          product_concept?: string
+          roadmap?: Json
+          tech_stack?: Json
+          ui_structure?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mvp_plans_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       niches: {
         Row: {
           audience: string | null

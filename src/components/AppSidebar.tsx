@@ -5,6 +5,7 @@ import {
   Lightbulb,
   Sparkles,
   LogOut,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NavLink } from "@/components/NavLink";
@@ -27,6 +28,7 @@ const navItems = [
   { title: "Pipeline", url: "/pipeline", icon: GitBranch },
   { title: "Agent Monitor", url: "/agents", icon: Cpu },
   { title: "Opportunities", url: "/opportunities", icon: Lightbulb },
+  { title: "Saved Plans", url: "/saved-plans", icon: FileText },
 ];
 
 export function AppSidebar() {
