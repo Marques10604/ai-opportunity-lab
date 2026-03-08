@@ -11,6 +11,7 @@ import AgentMonitor from "@/pages/AgentMonitor";
 import Opportunities from "@/pages/Opportunities";
 import OpportunityDetail from "@/pages/OpportunityDetail";
 import Auth from "@/pages/Auth";
+import SavedPlans from "@/pages/SavedPlans";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
