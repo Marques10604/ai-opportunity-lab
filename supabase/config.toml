@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.generate-mvp-plan]
 verify_jwt = false
+
+[functions.ingest-trends]
+verify_jwt = false
