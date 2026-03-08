@@ -27,7 +27,14 @@ function diffToNum(l: string | null) { return l === "Low" ? 30 : l === "High" ? 
 function levelColor(l: string | null) { return l === "Low" ? "text-success" : l === "High" ? "text-destructive" : "text-warning"; }
 function levelBg(l: string | null) { return l === "Low" ? "bg-success/10" : l === "High" ? "bg-destructive/10" : "bg-warning/10"; }
 
-type MvpPlan = ReturnType<typeof generateMvpPlan>;
+type MvpPlan = {
+  product_concept: string;
+  core_features: { name: string; description: string }[];
+  tech_stack: { name: string; purpose: string }[];
+  ui_structure: { page: string; description: string }[];
+  roadmap: { phase: string; duration: string; tasks: string[] }[];
+  monetization: string;
+};
 
 export default function OpportunityDetail() {
   const { id } = useParams();
