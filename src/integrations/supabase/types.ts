@@ -14,7 +14,183 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agents: {
+        Row: {
+          agent_name: string
+          id: string
+          last_run: string | null
+          role: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          agent_name: string
+          id?: string
+          last_run?: string | null
+          role?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          agent_name?: string
+          id?: string
+          last_run?: string | null
+          role?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      niches: {
+        Row: {
+          audience: string | null
+          competition_score: number | null
+          demand_score: number | null
+          id: string
+          niche_name: string
+          user_id: string
+        }
+        Insert: {
+          audience?: string | null
+          competition_score?: number | null
+          demand_score?: number | null
+          id?: string
+          niche_name: string
+          user_id: string
+        }
+        Update: {
+          audience?: string | null
+          competition_score?: number | null
+          demand_score?: number | null
+          id?: string
+          niche_name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      opportunities: {
+        Row: {
+          competition_level: string | null
+          created_at: string
+          difficulty_level: string | null
+          id: string
+          market_score: number | null
+          niche: string | null
+          problem: string | null
+          solution: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          competition_level?: string | null
+          created_at?: string
+          difficulty_level?: string | null
+          id?: string
+          market_score?: number | null
+          niche?: string | null
+          problem?: string | null
+          solution?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          competition_level?: string | null
+          created_at?: string
+          difficulty_level?: string | null
+          id?: string
+          market_score?: number | null
+          niche?: string | null
+          problem?: string | null
+          solution?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tools: {
+        Row: {
+          category: string | null
+          description: string | null
+          id: string
+          tool_name: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          category?: string | null
+          description?: string | null
+          id?: string
+          tool_name: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          category?: string | null
+          description?: string | null
+          id?: string
+          tool_name?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      trends: {
+        Row: {
+          category: string | null
+          detected_at: string
+          growth_score: number | null
+          id: string
+          name: string
+          source: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          detected_at?: string
+          growth_score?: number | null
+          id?: string
+          name: string
+          source?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          detected_at?: string
+          growth_score?: number | null
+          id?: string
+          name?: string
+          source?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
