@@ -14,6 +14,7 @@ import { DiscoveryEngine } from "@/components/DiscoveryEngine";
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const { data: opportunities, isLoading: oppLoading } = useOpportunities();
   const { data: trends } = useTrends();
   const { data: niches } = useNiches();
