@@ -107,6 +107,29 @@ export default function OpportunityDetail() {
     setSaved(true);
   };
 
+  const handleBuildMvp = async () => {
+    setGeneratingBlueprint(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-blueprint", {
+        body: {
+          title: opp.title,
+          niche: opp.niche,
+          problem: opp.problem,
+          solution: opp.solution,
+          competition_level: opp.competition_level,
+          market_score: opp.market_score,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setBlueprint(data);
+    } catch (err: any) {
+      console.error("Blueprint generation error:", err);
+      toast.error(err?.message || "Failed to generate blueprint");
+    }
+    setGeneratingBlueprint(false);
+  };
+
   return (
     <div className="space-y-6 max-w-5xl">
       <button onClick={() => navigate("/opportunities")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
