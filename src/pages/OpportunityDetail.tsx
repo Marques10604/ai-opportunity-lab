@@ -45,6 +45,8 @@ export default function OpportunityDetail() {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
+  const [generatingBlueprint, setGeneratingBlueprint] = useState(false);
 
   const opp = opportunities?.find((o) => o.id === id);
 
