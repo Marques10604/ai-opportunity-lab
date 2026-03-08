@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Zap, Shield, Gauge, Layers, Rocket, Target, TrendingUp,
@@ -11,7 +12,6 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
 } from "recharts";
 import { useOpportunities } from "@/hooks/useSupabaseData";
-import { generateMvpPlan } from "@/lib/mvpGenerator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Json } from "@/integrations/supabase/types";
@@ -26,7 +26,14 @@ function diffToNum(l: string | null) { return l === "Low" ? 30 : l === "High" ? 
 function levelColor(l: string | null) { return l === "Low" ? "text-success" : l === "High" ? "text-destructive" : "text-warning"; }
 function levelBg(l: string | null) { return l === "Low" ? "bg-success/10" : l === "High" ? "bg-destructive/10" : "bg-warning/10"; }
 
-type MvpPlan = ReturnType<typeof generateMvpPlan>;
+type MvpPlan = {
+  product_concept: string;
+  core_features: { name: string; description: string }[];
+  tech_stack: { name: string; purpose: string }[];
+  ui_structure: { page: string; description: string }[];
+  roadmap: { phase: string; duration: string; tasks: string[] }[];
+  monetization: string;
+};
 
 export default function OpportunityDetail() {
   const { id } = useParams();
@@ -59,8 +66,24 @@ export default function OpportunityDetail() {
   const handleGenerate = async () => {
     setGenerating(true);
     setSaved(false);
-    await new Promise((r) => setTimeout(r, 2200));
-    setMvpPlan(generateMvpPlan(opp));
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-mvp-plan", {
+        body: {
+          title: opp.title,
+          niche: opp.niche,
+          problem: opp.problem,
+          solution: opp.solution,
+          competition_level: opp.competition_level,
+          market_score: opp.market_score,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setMvpPlan(data);
+    } catch (err: any) {
+      console.error("MVP generation error:", err);
+      toast.error(err?.message || "Failed to generate MVP plan");
+    }
     setGenerating(false);
   };
 

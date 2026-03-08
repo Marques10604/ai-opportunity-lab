@@ -1,1 +1,7 @@
 project_id = "dohwfoalpuuhmnlajnyl"
+
+[functions.generate-opportunities]
+verify_jwt = false
+
+[functions.generate-mvp-plan]
+verify_jwt = false
