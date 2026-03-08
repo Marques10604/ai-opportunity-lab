@@ -34,17 +34,33 @@ export function DiscoveryEngine({ open, onClose }: { open: boolean; onClose: () 
       setStepStatuses({ ...statuses });
     }
 
-    // Generate and insert opportunities
-    const count = Math.floor(Math.random() * 3) + 3; // 3-5
-    const opportunities = generateOpportunities(count);
+    // Call AI to generate opportunities
+    try {
+      const { data: funcData, error: funcError } = await supabase.functions.invoke("generate-opportunities", {
+        body: {
+          niches: ["Developer Tools", "EdTech", "Healthcare", "Creator Economy", "E-commerce"],
+          trends: ["AI automation", "Remote work tools", "No-code platforms", "API-first products"],
+          tools: ["Notion", "Slack", "Figma", "Zapier", "Stripe", "Linear", "Vercel"],
+        },
+      });
 
-    const { error } = await supabase.from("opportunities").insert(
-      opportunities.map((o) => ({ ...o, user_id: user.id }))
-    );
+      if (funcError) throw funcError;
+      if (funcData?.error) throw new Error(funcData.error);
 
-    if (!error) {
-      setGeneratedCount(count);
+      const opportunities = funcData.opportunities || [];
+      if (opportunities.length === 0) throw new Error("No opportunities generated");
+
+      const { error: insertError } = await supabase.from("opportunities").insert(
+        opportunities.map((o: any) => ({ ...o, user_id: user.id }))
+      );
+
+      if (insertError) throw insertError;
+
+      setGeneratedCount(opportunities.length);
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+    } catch (err: any) {
+      console.error("Discovery error:", err);
+      toast.error(err?.message || "Failed to generate opportunities");
     }
 
     setRunning(false);
