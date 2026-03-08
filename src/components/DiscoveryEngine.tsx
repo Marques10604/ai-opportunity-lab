@@ -1,10 +1,11 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Loader2, Sparkles, X, Zap } from "lucide-react";
-import { pipelineSteps, generateOpportunities } from "@/lib/discoveryEngine";
+import { pipelineSteps } from "@/lib/discoveryEngine";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 type StepStatus = "pending" | "running" | "done";
 
