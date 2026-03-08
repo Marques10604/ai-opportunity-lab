@@ -28,10 +28,20 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 max-w-7xl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Real-time overview of AI opportunity discovery</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-1">Real-time overview of AI opportunity discovery</p>
+        </div>
+        <button
+          onClick={() => setDiscoveryOpen(true)}
+          className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity glow-primary"
+        >
+          <Zap className="h-4 w-4" /> Discover Opportunities
+        </button>
       </div>
+
+      <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); navigate("/opportunities"); }} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard label="Top Score" value={topScore} icon={BarChart3} trend="+12% this week" glowing />
