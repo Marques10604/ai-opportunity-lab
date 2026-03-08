@@ -85,16 +85,22 @@ export default function Dashboard() {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-4">AI Activity Feed</h3>
           <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
-            {activityFeed.map((item, i) => (
-              <div key={i} className="flex gap-3 text-[11px]">
-                <span className="text-muted-foreground/50 font-mono shrink-0 w-16">{item.time}</span>
-                <div>
-                  <span className="text-primary font-medium">{item.agent}</span>
-                  <span className="text-muted-foreground"> · {item.action}</span>
-                  <p className="text-muted-foreground/70 mt-0.5">{item.detail}</p>
+            {!agentLogs?.length ? (
+              <p className="text-[11px] text-muted-foreground/50">No activity yet. Run the pipeline to see logs.</p>
+            ) : (
+              agentLogs.slice(0, 15).map((log: any) => (
+                <div key={log.id} className="flex gap-3 text-[11px]">
+                  <span className="text-muted-foreground/50 font-mono shrink-0 w-16">
+                    {new Date(log.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <div>
+                    <span className="text-primary font-medium">{log.agent_name}</span>
+                    <span className="text-muted-foreground"> · {log.action}</span>
+                    <p className="text-muted-foreground/70 mt-0.5">{log.detail}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </motion.div>
       </div>
