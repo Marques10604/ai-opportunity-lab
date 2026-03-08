@@ -5,7 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Zap, Shield, Gauge, Layers, Rocket, Target, TrendingUp,
   Loader2, Code2, DollarSign, Megaphone, ListChecks, LayoutGrid,
-  Map, Save, CheckCircle2, FileText,
+  Map, Save, CheckCircle2, FileText, Wrench,
 } from "lucide-react";
 import {
   RadialBarChart, RadialBar, ResponsiveContainer,
@@ -15,6 +15,7 @@ import { useOpportunities } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Json } from "@/integrations/supabase/types";
+import { BlueprintView, Blueprint } from "@/components/BlueprintView";
 
 function getScoreColor(score: number) {
   if (score >= 80) return "hsl(150, 60%, 50%)";
@@ -44,6 +45,8 @@ export default function OpportunityDetail() {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
+  const [generatingBlueprint, setGeneratingBlueprint] = useState(false);
 
   const opp = opportunities?.find((o) => o.id === id);
 
@@ -102,6 +105,29 @@ export default function OpportunityDetail() {
     });
     setSaving(false);
     setSaved(true);
+  };
+
+  const handleBuildMvp = async () => {
+    setGeneratingBlueprint(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-blueprint", {
+        body: {
+          title: opp.title,
+          niche: opp.niche,
+          problem: opp.problem,
+          solution: opp.solution,
+          competition_level: opp.competition_level,
+          market_score: opp.market_score,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setBlueprint(data);
+    } catch (err: any) {
+      console.error("Blueprint generation error:", err);
+      toast.error(err?.message || "Failed to generate blueprint");
+    }
+    setGeneratingBlueprint(false);
   };
 
   return (
@@ -193,17 +219,30 @@ export default function OpportunityDetail() {
         </motion.div>
       </div>
 
-      {/* Generate MVP Plan Button */}
-      <motion.button
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
-        onClick={handleGenerate}
-        disabled={generating}
-        className="w-full rounded-xl p-4 font-semibold text-sm flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:opacity-90 transition-opacity glow-primary disabled:opacity-60"
-      >
-        {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating MVP Plan...</> : <><Rocket className="h-4 w-4" /> {mvpPlan ? "Regenerate MVP Plan" : "Generate MVP Plan"}</>}
-      </motion.button>
+      {/* Action Buttons */}
+      <div className="grid md:grid-cols-2 gap-3">
+        <motion.button
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          onClick={handleGenerate}
+          disabled={generating}
+          className="rounded-xl p-4 font-semibold text-sm flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:opacity-90 transition-opacity glow-primary disabled:opacity-60"
+        >
+          {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating MVP Plan...</> : <><Rocket className="h-4 w-4" /> {mvpPlan ? "Regenerate MVP Plan" : "Generate MVP Plan"}</>}
+        </motion.button>
+
+        <motion.button
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.37 }}
+          onClick={handleBuildMvp}
+          disabled={generatingBlueprint}
+          className="rounded-xl p-4 font-semibold text-sm flex items-center justify-center gap-2 bg-accent text-accent-foreground hover:opacity-90 transition-opacity disabled:opacity-60"
+        >
+          {generatingBlueprint ? <><Loader2 className="h-4 w-4 animate-spin" /> Building Blueprint...</> : <><Wrench className="h-4 w-4" /> {blueprint ? "Rebuild MVP Blueprint" : "Build MVP"}</>}
+        </motion.button>
+      </div>
 
       {/* MVP Plan Document */}
       <AnimatePresence>
@@ -317,6 +356,13 @@ export default function OpportunityDetail() {
               </div>
             )}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Blueprint Display */}
+      <AnimatePresence>
+        {blueprint && (
+          <BlueprintView blueprint={blueprint} opportunityTitle={opp.title} />
         )}
       </AnimatePresence>
     </div>
