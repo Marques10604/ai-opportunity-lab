@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 import { seedUserData } from "@/lib/seedData";
 import { DiscoveryEngine } from "@/components/DiscoveryEngine";
+import { TrendsList } from "@/components/TrendsList";
 
 export default function Dashboard() {
   const navigate = useNavigate();
