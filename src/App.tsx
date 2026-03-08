@@ -31,6 +31,7 @@ const AppRoutes = () => (
     <Route path="/agents" element={<ProtectedRoute><AppLayout><AgentMonitor /></AppLayout></ProtectedRoute>} />
     <Route path="/opportunities" element={<ProtectedRoute><AppLayout><Opportunities /></AppLayout></ProtectedRoute>} />
     <Route path="/opportunities/:id" element={<ProtectedRoute><AppLayout><OpportunityDetail /></AppLayout></ProtectedRoute>} />
+    <Route path="/saved-plans" element={<ProtectedRoute><AppLayout><SavedPlans /></AppLayout></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

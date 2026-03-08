@@ -28,6 +28,7 @@ const navItems = [
   { title: "Pipeline", url: "/pipeline", icon: GitBranch },
   { title: "Agent Monitor", url: "/agents", icon: Cpu },
   { title: "Opportunities", url: "/opportunities", icon: Lightbulb },
+  { title: "Saved Plans", url: "/saved-plans", icon: FileText },
 ];
 
 export function AppSidebar() {
