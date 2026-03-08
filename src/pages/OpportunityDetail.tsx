@@ -358,6 +358,13 @@ export default function OpportunityDetail() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Blueprint Display */}
+      <AnimatePresence>
+        {blueprint && (
+          <BlueprintView blueprint={blueprint} opportunityTitle={opp.title} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
