@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 import { seedUserData } from "@/lib/seedData";
 import { DiscoveryEngine } from "@/components/DiscoveryEngine";
+import { TrendsList } from "@/components/TrendsList";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -97,7 +98,10 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="rounded-xl border border-border bg-card">
+      {/* Trends Section */}
+      <TrendsList />
+
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="rounded-xl border border-border bg-card">
         <div className="p-5 border-b border-border">
           <h3 className="text-sm font-semibold">Recent Opportunities</h3>
         </div>
