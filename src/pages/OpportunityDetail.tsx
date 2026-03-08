@@ -219,17 +219,30 @@ export default function OpportunityDetail() {
         </motion.div>
       </div>
 
-      {/* Generate MVP Plan Button */}
-      <motion.button
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
-        onClick={handleGenerate}
-        disabled={generating}
-        className="w-full rounded-xl p-4 font-semibold text-sm flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:opacity-90 transition-opacity glow-primary disabled:opacity-60"
-      >
-        {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating MVP Plan...</> : <><Rocket className="h-4 w-4" /> {mvpPlan ? "Regenerate MVP Plan" : "Generate MVP Plan"}</>}
-      </motion.button>
+      {/* Action Buttons */}
+      <div className="grid md:grid-cols-2 gap-3">
+        <motion.button
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          onClick={handleGenerate}
+          disabled={generating}
+          className="rounded-xl p-4 font-semibold text-sm flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:opacity-90 transition-opacity glow-primary disabled:opacity-60"
+        >
+          {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating MVP Plan...</> : <><Rocket className="h-4 w-4" /> {mvpPlan ? "Regenerate MVP Plan" : "Generate MVP Plan"}</>}
+        </motion.button>
+
+        <motion.button
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.37 }}
+          onClick={handleBuildMvp}
+          disabled={generatingBlueprint}
+          className="rounded-xl p-4 font-semibold text-sm flex items-center justify-center gap-2 bg-accent text-accent-foreground hover:opacity-90 transition-opacity disabled:opacity-60"
+        >
+          {generatingBlueprint ? <><Loader2 className="h-4 w-4 animate-spin" /> Building Blueprint...</> : <><Wrench className="h-4 w-4" /> {blueprint ? "Rebuild MVP Blueprint" : "Build MVP"}</>}
+        </motion.button>
+      </div>
 
       {/* MVP Plan Document */}
       <AnimatePresence>
