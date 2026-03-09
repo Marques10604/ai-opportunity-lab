@@ -67,6 +67,22 @@ export function useAgents() {
   });
 }
 
+export function useDetectedProblems() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["detected_problems", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("detected_problems")
+        .select("*")
+        .order("urgency_score", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+}
+
 export function useAgentLogs() {
   const { user } = useAuth();
   return useQuery({
