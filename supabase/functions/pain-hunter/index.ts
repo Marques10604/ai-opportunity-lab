@@ -6,6 +6,33 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const sampleProblems = [
+  {
+    problem_title: "Gerenciar clientes com planilhas",
+    problem_description:
+      "Muitos freelancers reclamam que gerenciar clientes manualmente em planilhas é caótico e propenso a erros.",
+    source_platform: "Reddit",
+    frequency_score: 70,
+    urgency_score: 60,
+  },
+  {
+    problem_title: "Apps de produtividade demais",
+    problem_description:
+      "Usuários reclamam de precisar de muitas ferramentas diferentes para gerenciar tarefas, notas e projetos.",
+    source_platform: "Quora",
+    frequency_score: 60,
+    urgency_score: 50,
+  },
+  {
+    problem_title: "Copiar dados manualmente entre ferramentas",
+    problem_description:
+      "Pessoas reclamam de copiar dados manualmente entre diferentes ferramentas e dashboards.",
+    source_platform: "Indie Hackers",
+    frequency_score: 80,
+    urgency_score: 70,
+  },
+];
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -37,18 +64,15 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    const body = await req.json();
-    const problems: {
-      problem_title: string;
-      problem_description?: string;
-      source_platform?: string;
-      frequency_score?: number;
-      urgency_score?: number;
-    }[] = body.problems;
+    const body = await req.json().catch(() => ({}));
+    const testMode = body.test_mode === true;
+
+    // Use sample problems in test mode, otherwise use provided problems
+    const problems = testMode ? sampleProblems : body.problems;
 
     if (!Array.isArray(problems) || problems.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Campo 'problems' deve ser um array não vazio" }),
+        JSON.stringify({ error: "Campo 'problems' deve ser um array não vazio ou ative test_mode: true" }),
         {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -56,7 +80,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const rows = problems.map((p) => ({
+    const rows = problems.map((p: any) => ({
       user_id: userId,
       problem_title: p.problem_title?.trim() || "Sem título",
       problem_description: p.problem_description?.trim() ?? null,
@@ -87,6 +111,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
+        test_mode: testMode,
         inserted: data.length,
         problems: data,
       }),
