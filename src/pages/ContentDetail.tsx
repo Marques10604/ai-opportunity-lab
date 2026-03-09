@@ -186,9 +186,72 @@ export default function ContentDetail() {
             <Icon className="h-6 w-6 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold tracking-tight">{content.titulo_conteudo}</h1>
-            {content.gancho && (
-              <p className="text-sm text-muted-foreground mt-1">{content.gancho}</p>
+            {editingHeader ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Título</label>
+                  <Input
+                    value={tituloValue}
+                    onChange={(e) => setTituloValue(e.target.value)}
+                    className="text-lg font-bold h-10"
+                    placeholder="Título do conteúdo"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 block">Gancho</label>
+                  <Textarea
+                    value={ganchoValue}
+                    onChange={(e) => setGanchoValue(e.target.value)}
+                    className="text-sm min-h-[60px]"
+                    placeholder="Gancho do conteúdo"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setEditingHeader(false)} disabled={saving} className="gap-1.5 h-8">
+                    <X className="h-3.5 w-3.5" /> Cancelar
+                  </Button>
+                  <Button size="sm" disabled={saving || !tituloValue.trim()} className="gap-1.5 h-8" onClick={async () => {
+                    if (!id || !tituloValue.trim()) return;
+                    setSaving(true);
+                    const { error } = await supabase
+                      .from("content_opportunities")
+                      .update({
+                        titulo_conteudo: tituloValue.trim().slice(0, 500),
+                        gancho: ganchoValue.trim().slice(0, 1000) || null,
+                      })
+                      .eq("id", id);
+                    setSaving(false);
+                    if (error) { toast.error("Erro ao salvar"); return; }
+                    toast.success("Título e gancho atualizados");
+                    setEditingHeader(false);
+                    queryClient.invalidateQueries({ queryKey: ["content_detail", id] });
+                    queryClient.invalidateQueries({ queryKey: ["content_opportunities"] });
+                  }}>
+                    <Save className="h-3.5 w-3.5" /> {saving ? "Salvando..." : "Salvar"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="group/header">
+                <div className="flex items-start justify-between gap-2">
+                  <h1 className="text-xl font-bold tracking-tight">{content.titulo_conteudo}</h1>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 opacity-0 group-hover/header:opacity-100 transition-opacity"
+                    onClick={() => {
+                      setTituloValue(content.titulo_conteudo);
+                      setGanchoValue(content.gancho || "");
+                      setEditingHeader(true);
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                {content.gancho && (
+                  <p className="text-sm text-muted-foreground mt-1">{content.gancho}</p>
+                )}
+              </div>
             )}
             <div className="flex flex-wrap items-center gap-2 mt-3">
               {content.plataforma && (
