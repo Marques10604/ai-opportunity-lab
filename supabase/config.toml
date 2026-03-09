@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.daily-pain-discovery]
 verify_jwt = false
+
+[functions.detect-patterns]
+verify_jwt = false
