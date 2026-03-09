@@ -1,25 +1,21 @@
 import { motion } from "framer-motion";
 import { useAgents } from "@/hooks/useSupabaseData";
-import { Search, TrendingUp, Wrench, Target, Sparkles, Filter, BarChart3, Database, ArrowRight } from "lucide-react";
+import { Search, Sparkles, Database, ArrowRight, Layers, Eye, LayoutPanelLeft, Share2 } from "lucide-react";
 
 const agentIcons: Record<string, React.ElementType> = {
   "Pain Hunter": Search,
-  "Trend Detector": TrendingUp,
-  "Tool Hunter": Wrench,
-  "Niche Detector": Target,
-  "SaaS Generator": Sparkles,
-  "Saturation Filter": Filter,
-  "Market Predictor": BarChart3,
+  "Niche Classifier": Layers,
+  "Competitor Analyzer": Eye,
+  "5 Angles Engine": LayoutPanelLeft,
+  "Platform Personalizer": Share2,
 };
 
 const agentLabels: Record<string, string> = {
   "Pain Hunter": "Caçador de Problemas",
-  "Trend Detector": "Detector de Tendências",
-  "Tool Hunter": "Caçador de Ferramentas",
-  "Niche Detector": "Detector de Nichos",
-  "SaaS Generator": "Gerador de SaaS",
-  "Saturation Filter": "Filtro de Saturação",
-  "Market Predictor": "Preditor de Mercado",
+  "Niche Classifier": "Classificador de Nichos",
+  "Competitor Analyzer": "Análise de Concorrentes",
+  "5 Angles Engine": "Motor de 5 Ângulos",
+  "Platform Personalizer": "Personalizador por Plataforma",
 };
 
 const statusLabel = (status: string | null) => {
