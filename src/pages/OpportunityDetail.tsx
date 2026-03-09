@@ -172,8 +172,8 @@ export default function OpportunityDetail() {
           <p className="text-sm text-muted-foreground leading-relaxed">{opp.problem || "Sem descrição disponível."}</p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Proposed SaaS Solution</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">{opp.solution || "No description available."}</p>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Solução SaaS Proposta</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">{opp.solution || "Sem descrição disponível."}</p>
         </motion.div>
       </div>
 
