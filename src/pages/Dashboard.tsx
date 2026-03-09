@@ -183,22 +183,78 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
           <p className="text-sm text-muted-foreground mt-1">Visão em tempo real da descoberta de oportunidades com IA</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={runPainHunter}
-            disabled={painHunterLoading}
+            disabled={painHunterLoading || pipelineRunning}
             className="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors disabled:opacity-50"
           >
             {painHunterLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            Executar Caçador de Problemas
+            Caçador de Problemas
+          </button>
+          <button
+            onClick={runFullPipeline}
+            disabled={pipelineRunning || painHunterLoading}
+            className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity glow-primary disabled:opacity-60"
+          >
+            {pipelineRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+            Pipeline Completo
           </button>
           <button
             onClick={() => setDiscoveryOpen(true)}
-            className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity glow-primary"
+            disabled={pipelineRunning}
+            className="h-9 px-4 rounded-lg bg-accent text-accent-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Zap className="h-4 w-4" /> Descobrir Oportunidades
           </button>
         </div>
+      </div>
+
+      {/* Pipeline Progress */}
+      <AnimatePresence>
+        {pipelineRunning && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="rounded-xl border border-primary/30 bg-primary/5 p-4 overflow-hidden"
+          >
+            <p className="text-xs font-semibold text-primary mb-3">Pipeline em execução...</p>
+            <div className="flex items-center gap-2">
+              {[
+                { step: 1, label: "Caçador de Problemas" },
+                { step: 2, label: "Detector de Padrões" },
+                { step: 3, label: "Gerador de Oportunidades" },
+              ].map((s) => (
+                <div key={s.step} className="flex items-center gap-2">
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    pipelineStep > s.step
+                      ? "bg-success/10 text-success"
+                      : pipelineStep === s.step
+                      ? "bg-primary/20 text-primary"
+                      : "bg-secondary text-muted-foreground"
+                  }`}>
+                    {pipelineStep > s.step ? (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    ) : pipelineStep === s.step ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0" />
+                    )}
+                    {s.label}
+                  </div>
+                  {s.step < 3 && <span className="text-muted-foreground/30">→</span>}
+                </div>
+              ))}
+              {pipelineStep === 4 && (
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 text-success text-xs font-medium ml-2">
+                  <CheckCircle2 className="h-3.5 w-3.5" /> Concluído!
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
 
       <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); navigate("/opportunities"); }} />
