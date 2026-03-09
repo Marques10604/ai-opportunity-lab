@@ -295,7 +295,7 @@ export default function OpportunityDetail() {
 
               {/* Tech Stack */}
               <div className="px-6 py-5 border-b border-border">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Code2 className="h-4 w-4 text-accent" /> Recommended Tech Stack</h3>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Code2 className="h-4 w-4 text-accent" /> Stack Tecnológica Recomendada</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {mvpPlan.tech_stack.map((t) => (
                     <div key={t.name} className="rounded-lg border border-border bg-secondary/30 p-3">
