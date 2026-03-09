@@ -67,15 +67,15 @@ export function useAgents() {
   });
 }
 
-export function useDetectedProblems() {
+export function useDetectedProblems(sortBy: "viral_score" | "urgency_score" | "frequency_score" = "viral_score") {
   const { user } = useAuth();
   return useQuery({
-    queryKey: ["detected_problems", user?.id],
+    queryKey: ["detected_problems", user?.id, sortBy],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("detected_problems")
         .select("*")
-        .order("urgency_score", { ascending: false });
+        .order(sortBy, { ascending: false });
       if (error) throw error;
       return data;
     },
