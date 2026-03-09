@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap, Search, Loader2, Network, Play, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap, Search, Loader2, Network, Play, CheckCircle2, Clock, AlertCircle, Square } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { StatCard } from "@/components/StatCard";
 import { chartData } from "@/lib/mockData";
@@ -79,6 +79,7 @@ export default function Dashboard() {
   const [pipelineRunning, setPipelineRunning] = useState(false);
   const [pipelineStep, setPipelineStep] = useState<number>(0);
   const [pipelineLogs, setPipelineLogs] = useState<{ time: string; icon: string; text: string; level: "info" | "success" | "warn" }[]>([]);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [stepStartTime, setStepStartTime] = useState<number>(0);
   const [stepElapsed, setStepElapsed] = useState<number>(0);
   const { data: opportunities, isLoading: oppLoading } = useOpportunities();
@@ -126,13 +127,23 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [pipelineRunning, pipelineStep, stepStartTime]);
 
+  const cancelPipeline = () => {
+    abortController?.abort();
+    setAbortController(null);
+  };
+
   const runFullPipeline = async () => {
     if (!user) return;
+    const controller = new AbortController();
+    setAbortController(controller);
     setPipelineRunning(true);
     setPipelineLogs([]);
     const totalStart = Date.now();
+    const signal = controller.signal;
 
     try {
+      const checkAbort = () => { if (signal.aborted) throw new Error("Pipeline cancelado pelo usuário."); };
+
       // Step 1: Pain Hunter
       startStep(1);
       addLog("🔍", "Iniciando Caçador de Problemas...");
@@ -142,11 +153,13 @@ export default function Dashboard() {
         body: { test_mode: true },
       });
       if (phError) throw new Error(`Caçador de Problemas: ${phError.message}`);
+      checkAbort();
       const problemCount = phData?.inserted || phData?.problems?.length || 0;
       addLog("✅", `${problemCount} problemas detectados e armazenados`, "success");
       queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
 
       // Step 2: Detect Patterns
+      checkAbort();
       startStep(2);
       addLog("🔗", "Iniciando Detector de Padrões...");
       addLog("⏱️", "Tempo estimado: ~10-20 segundos");
@@ -159,6 +172,7 @@ export default function Dashboard() {
       });
       if (ptError) throw new Error(`Detector de Padrões: ${ptError.message}`);
       if (patternData?.error) throw new Error(`Detector de Padrões: ${patternData.error}`);
+      checkAbort();
       queryClient.invalidateQueries({ queryKey: ["problem_patterns"] });
       queryClient.invalidateQueries({ queryKey: ["top_patterns"] });
 
@@ -171,12 +185,14 @@ export default function Dashboard() {
       });
 
       // Step 3: Generate Opportunities from each pattern
+      checkAbort();
       startStep(3);
       addLog("💡", "Iniciando Gerador de Oportunidades...");
       addLog("⏱️", `Tempo estimado: ~${patterns.length * 10}-${patterns.length * 20}s (${patterns.length} padrões)`);
 
       let totalOpps = 0;
       for (let i = 0; i < patterns.length; i++) {
+        checkAbort();
         const pattern = patterns[i];
         addLog("🔄", `Gerando oportunidades para "${pattern.pattern_title}" (${i + 1}/${patterns.length})...`);
 
@@ -213,15 +229,22 @@ export default function Dashboard() {
       addLog("🏁", `Pipeline concluído em ${totalTime}s — ${patterns.length} padrões → ${totalOpps} oportunidades`, "success");
       toast.success(`Pipeline completo em ${totalTime}s! ${totalOpps} oportunidades geradas.`);
 
-      setTimeout(() => { setPipelineStep(0); setPipelineRunning(false); }, 5000);
+      setTimeout(() => { setPipelineStep(0); setPipelineRunning(false); setAbortController(null); }, 5000);
       return;
     } catch (err: any) {
-      console.error("Erro no pipeline:", err);
-      addLog("❌", err?.message || "Erro desconhecido", "warn");
-      toast.error(err?.message || "Erro ao executar pipeline completo");
+      const cancelled = signal.aborted;
+      if (cancelled) {
+        addLog("🛑", "Pipeline cancelado pelo usuário.", "warn");
+        toast.info("Pipeline cancelado.");
+      } else {
+        console.error("Erro no pipeline:", err);
+        addLog("❌", err?.message || "Erro desconhecido", "warn");
+        toast.error(err?.message || "Erro ao executar pipeline completo");
+      }
     }
     setPipelineStep(0);
     setPipelineRunning(false);
+    setAbortController(null);
   };
 
   const topScore = opportunities?.length ? Math.max(...opportunities.map(o => o.market_score ?? 0)) : 0;
@@ -250,6 +273,14 @@ export default function Dashboard() {
             {pipelineRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             Pipeline Completo
           </button>
+          {pipelineRunning && (
+            <button
+              onClick={cancelPipeline}
+              className="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity"
+            >
+              <Square className="h-4 w-4" /> Parar
+            </button>
+          )}
           <button
             onClick={() => setDiscoveryOpen(true)}
             disabled={pipelineRunning}
