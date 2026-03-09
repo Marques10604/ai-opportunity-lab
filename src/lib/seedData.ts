@@ -33,12 +33,10 @@ export async function seedUserData(userId: string) {
   ]);
 
   await supabase.from("agents").insert([
-    { user_id: userId, agent_name: "Pain Hunter", role: "Escaneia comunidades em busca de problemas reais", status: "active", last_run: new Date().toISOString() },
-    { user_id: userId, agent_name: "Trend Detector", role: "Analisa tendências de tecnologia", status: "active", last_run: new Date().toISOString() },
-    { user_id: userId, agent_name: "Tool Hunter", role: "Mapeia ferramentas e soluções existentes", status: "active", last_run: new Date().toISOString() },
-    { user_id: userId, agent_name: "Niche Detector", role: "Encontra públicos pouco atendidos", status: "idle", last_run: null },
-    { user_id: userId, agent_name: "SaaS Generator", role: "Gera ideias de startup", status: "active", last_run: new Date().toISOString() },
-    { user_id: userId, agent_name: "Saturation Filter", role: "Filtra ideias em mercados saturados", status: "processing", last_run: new Date().toISOString() },
-    { user_id: userId, agent_name: "Market Predictor", role: "Estima potencial de mercado", status: "active", last_run: new Date().toISOString() },
+    { user_id: userId, agent_name: "Pain Hunter", role: "Coleta dores em qualquer nicho, independente do setor", status: "active", last_run: new Date().toISOString() },
+    { user_id: userId, agent_name: "Niche Classifier", role: "Identifica setor da dor, ajusta vocabulário, ferramentas e tom do conteúdo", status: "active", last_run: new Date().toISOString() },
+    { user_id: userId, agent_name: "Competitor Analyzer", role: "Busca reviews, issues e reclamações para gerar conteúdo com base em falhas de ferramentas", status: "active", last_run: new Date().toISOString() },
+    { user_id: userId, agent_name: "5 Angles Engine", role: "Gera 5 versões de conteúdo por dor: tutorial, polêmica, hack, comparativo, transformação", status: "idle", last_run: null },
+    { user_id: userId, agent_name: "Platform Personalizer", role: "Adapta automaticamente cada conteúdo para Instagram, TikTok, LinkedIn, X e YouTube Shorts", status: "active", last_run: new Date().toISOString() },
   ]);
 }
