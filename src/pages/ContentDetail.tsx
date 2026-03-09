@@ -30,6 +30,9 @@ export default function ContentDetail() {
   const queryClient = useQueryClient();
 
   const [copied, setCopied] = useState(false);
+  const [editingHeader, setEditingHeader] = useState(false);
+  const [tituloValue, setTituloValue] = useState("");
+  const [ganchoValue, setGanchoValue] = useState("");
   const [editingRoteiro, setEditingRoteiro] = useState(false);
   const [editingSlides, setEditingSlides] = useState(false);
   const [roteiroValue, setRoteiroValue] = useState("");
