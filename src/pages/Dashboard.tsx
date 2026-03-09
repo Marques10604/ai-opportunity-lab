@@ -179,7 +179,7 @@ export default function Dashboard() {
       const patterns = patternData?.patterns || [];
       if (patterns.length === 0) throw new Error("Nenhum padrão detectado para gerar oportunidades.");
 
-      addLog("✅", `${patterns.length} padrões agrupados com sucesso`, "success");
+      addLog("✅", "Detector de Padrões executado. Padrões agrupados com sucesso.", "success");
       patterns.forEach((p: any) => {
         addLog("📊", `Padrão: "${p.pattern_title}" — ${p.total_occurrences || 0} ocorrências`);
       });
