@@ -16,6 +16,7 @@ import Trends from "@/pages/Trends";
 import Problems from "@/pages/Problems";
 import Patterns from "@/pages/Patterns";
 import ContentOpportunities from "@/pages/ContentOpportunities";
+import ContentDetail from "@/pages/ContentDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
