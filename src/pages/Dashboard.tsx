@@ -24,6 +24,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
+  const [painHunterLoading, setPainHunterLoading] = useState(false);
   const { data: opportunities, isLoading: oppLoading } = useOpportunities();
   const { data: trends } = useTrends();
   const { data: niches } = useNiches();
@@ -32,6 +33,22 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) seedUserData(user.id);
   }, [user]);
+
+  const runPainHunter = async () => {
+    setPainHunterLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("pain-hunter", {
+        body: { test_mode: true },
+      });
+      if (error) throw error;
+      toast.success("Pain Hunter concluído. Problemas armazenados no banco de dados.");
+    } catch (err: any) {
+      console.error("Erro ao executar Pain Hunter:", err);
+      toast.error(err?.message || "Erro ao executar Pain Hunter");
+    } finally {
+      setPainHunterLoading(false);
+    }
+  };
 
   const topScore = opportunities?.length ? Math.max(...opportunities.map(o => o.market_score ?? 0)) : 0;
 
