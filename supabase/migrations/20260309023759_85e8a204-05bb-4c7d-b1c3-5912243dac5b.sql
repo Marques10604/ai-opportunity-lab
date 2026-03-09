@@ -1,0 +1,1 @@
+ALTER TABLE public.opportunities ADD COLUMN source_pattern_id uuid REFERENCES public.problem_patterns(id) ON DELETE SET NULL;
