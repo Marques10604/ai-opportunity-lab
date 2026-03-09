@@ -244,6 +244,7 @@ export default function Dashboard() {
     }
     setPipelineStep(0);
     setPipelineRunning(false);
+    setAbortController(null);
   };
 
   const topScore = opportunities?.length ? Math.max(...opportunities.map(o => o.market_score ?? 0)) : 0;
