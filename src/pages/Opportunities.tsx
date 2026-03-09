@@ -3,6 +3,13 @@ import { useOpportunities } from "@/hooks/useSupabaseData";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Lightbulb } from "lucide-react";
 
+const competitionLabel = (level: string | null) => {
+  if (level === "Low") return "Baixa";
+  if (level === "Medium") return "Média";
+  if (level === "High") return "Alta";
+  return level ?? "-";
+};
+
 export default function Opportunities() {
   const navigate = useNavigate();
   const { data: opportunities, isLoading } = useOpportunities();
@@ -10,12 +17,12 @@ export default function Opportunities() {
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Opportunities</h1>
-        <p className="text-sm text-muted-foreground mt-1">AI-generated SaaS opportunities, ranked by potential</p>
+        <h1 className="text-2xl font-bold tracking-tight">Oportunidades</h1>
+        <p className="text-sm text-muted-foreground mt-1">Oportunidades SaaS geradas por IA, classificadas por potencial</p>
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-muted-foreground">Loading...</div>
+        <div className="text-sm text-muted-foreground">Carregando...</div>
       ) : (
         <div className="space-y-3">
           {opportunities?.map((opp, i) => (
@@ -35,13 +42,13 @@ export default function Opportunities() {
                 <div className="flex items-center gap-3 mt-1">
                   <span className="text-[10px] font-mono text-muted-foreground">{opp.niche}</span>
                   <span className="text-[10px] text-muted-foreground">·</span>
-                  <span className="text-[10px] text-muted-foreground">Competition: {opp.competition_level}</span>
+                  <span className="text-[10px] text-muted-foreground">Concorrência: {competitionLabel(opp.competition_level)}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <div className="text-right">
                   <p className="text-2xl font-bold text-primary">{opp.market_score}</p>
-                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Score</p>
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Pontuação</p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
               </div>

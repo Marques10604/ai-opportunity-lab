@@ -25,12 +25,12 @@ import {
 } from "@/components/ui/sidebar";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Painel", url: "/", icon: LayoutDashboard },
   { title: "Pipeline", url: "/pipeline", icon: GitBranch },
-  { title: "Agent Monitor", url: "/agents", icon: Cpu },
-  { title: "Trends", url: "/trends", icon: TrendingUp },
-  { title: "Opportunities", url: "/opportunities", icon: Lightbulb },
-  { title: "Saved Plans", url: "/saved-plans", icon: FileText },
+  { title: "Monitor de Agentes", url: "/agents", icon: Cpu },
+  { title: "Tendências", url: "/trends", icon: TrendingUp },
+  { title: "Oportunidades", url: "/opportunities", icon: Lightbulb },
+  { title: "Planos Salvos", url: "/saved-plans", icon: FileText },
 ];
 
 export function AppSidebar() {
@@ -57,7 +57,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Navegação</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
@@ -84,12 +84,12 @@ export function AppSidebar() {
             <div className="rounded-lg border border-border bg-secondary/50 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <div className="h-2 w-2 rounded-full bg-success animate-pulse-glow" />
-                <span className="text-[10px] font-mono text-muted-foreground">SYSTEM ACTIVE</span>
+                <span className="text-[10px] font-mono text-muted-foreground">SISTEMA ATIVO</span>
               </div>
-              <p className="text-[10px] text-muted-foreground">7 agents running · 142 tasks queued</p>
+              <p className="text-[10px] text-muted-foreground">7 agentes em execução · 142 tarefas na fila</p>
             </div>
             <button onClick={signOut} className="mt-2 w-full flex items-center gap-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
-              <LogOut className="h-3 w-3" /> Sign out
+              <LogOut className="h-3 w-3" /> Sair
             </button>
           </SidebarGroup>
         )}

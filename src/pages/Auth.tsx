@@ -61,7 +61,7 @@ export default function Auth() {
           </div>
           <h1 className="text-xl font-bold">Opportunity AI Lab</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isLogin ? "Sign in to your workspace" : "Create your workspace"}
+            {isLogin ? "Entre na sua área" : "Crie sua área"}
           </p>
         </div>
 
@@ -71,7 +71,7 @@ export default function Auth() {
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Display name"
+                placeholder="Nome de exibição"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="w-full h-10 pl-10 pr-4 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -82,7 +82,7 @@ export default function Auth() {
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="email"
-              placeholder="Email"
+              placeholder="E-mail"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -93,7 +93,7 @@ export default function Auth() {
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="password"
-              placeholder="Password"
+              placeholder="Senha"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -109,15 +109,15 @@ export default function Auth() {
             disabled={loading}
             className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50"
           >
-            {loading ? "Loading..." : isLogin ? "Sign In" : "Create Account"}
+            {loading ? "Carregando..." : isLogin ? "Entrar" : "Criar conta"}
             <ArrowRight className="h-4 w-4" />
           </button>
         </form>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
+          {isLogin ? "Não tem uma conta?" : "Já tem uma conta?"}{" "}
           <button onClick={() => { setIsLogin(!isLogin); setError(""); }} className="text-primary hover:underline">
-            {isLogin ? "Sign up" : "Sign in"}
+            {isLogin ? "Cadastrar" : "Entrar"}
           </button>
         </p>
       </motion.div>

@@ -1,28 +1,28 @@
 // Simulated opportunity templates for the discovery engine
 const problems = [
-  { problem: "Small business owners struggle to manage social media across multiple platforms", niche: "Small Business", title: "AI Social Media Manager for SMBs" },
-  { problem: "Developers waste hours debugging CI/CD pipelines with unclear error messages", niche: "Developer Tools", title: "Intelligent CI/CD Debugger" },
-  { problem: "Content creators can't easily repurpose long-form content into short clips", niche: "Creator Economy", title: "AI Content Repurposing Engine" },
-  { problem: "Remote teams lack async video communication tools that respect timezones", niche: "Remote Work", title: "Timezone-Aware Async Video Hub" },
-  { problem: "E-commerce sellers have no easy way to A/B test product descriptions at scale", niche: "E-commerce", title: "AI Product Copy Optimizer" },
-  { problem: "Therapists spend too much time on session notes and insurance documentation", niche: "Healthcare", title: "AI Therapy Notes Assistant" },
-  { problem: "Indie game developers can't afford professional QA testing services", niche: "Gaming", title: "Automated QA for Indie Games" },
-  { problem: "Real estate agents manually create property listing descriptions for every home", niche: "Real Estate", title: "AI Property Listing Generator" },
-  { problem: "Teachers struggle to create personalized quizzes for diverse student levels", niche: "EdTech", title: "Adaptive Quiz Generator for Teachers" },
-  { problem: "Podcast hosts have no automated way to find and book relevant guests", niche: "Media", title: "AI Podcast Guest Matchmaker" },
-  { problem: "SaaS founders can't easily track competitor feature launches in real-time", niche: "SaaS Tools", title: "Real-Time Competitor Feature Tracker" },
-  { problem: "Freelance writers lack tools to manage client briefs and deadlines in one place", niche: "Freelancers", title: "Freelance Writer Command Center" },
-  { problem: "HR teams spend weeks creating onboarding materials for each new role", niche: "HR Tech", title: "AI Onboarding Content Builder" },
-  { problem: "Non-profits struggle to write compelling grant proposals efficiently", niche: "Non-Profit", title: "AI Grant Proposal Writer" },
-  { problem: "Pet owners can't easily find trusted pet sitters with verified reviews", niche: "Pet Care", title: "Verified Pet Sitter Marketplace" },
+  { problem: "Pequenos empreendedores têm dificuldade para gerenciar redes sociais em múltiplas plataformas", niche: "Pequenos Negócios", title: "Gerenciador de Mídias Sociais com IA para PMEs" },
+  { problem: "Desenvolvedores perdem horas depurando pipelines de CI/CD com mensagens de erro pouco claras", niche: "Ferramentas para Desenvolvedores", title: "Depurador Inteligente de CI/CD" },
+  { problem: "Criadores de conteúdo não conseguem reaproveitar facilmente conteúdos longos em clipes curtos", niche: "Economia Criativa", title: "Motor de Reaproveitamento de Conteúdo com IA" },
+  { problem: "Times remotos não têm ferramentas de vídeo assíncrono que respeitem fusos horários", niche: "Trabalho Remoto", title: "Hub de Vídeo Assíncrono com Consciência de Fuso" },
+  { problem: "Vendedores de e-commerce não têm forma simples de testar descrições de produto em escala", niche: "E-commerce", title: "Otimizador de Copy de Produto com IA" },
+  { problem: "Terapeutas gastam tempo demais com anotações de sessão e documentação para convênios", niche: "Saúde", title: "Assistente de Notas Terapêuticas com IA" },
+  { problem: "Desenvolvedores indie de jogos não conseguem pagar por serviços profissionais de QA", niche: "Games", title: "QA Automatizado para Jogos Indie" },
+  { problem: "Corretores imobiliários criam descrições de imóveis manualmente para cada anúncio", niche: "Imobiliário", title: "Gerador de Descrições de Imóveis com IA" },
+  { problem: "Professores têm dificuldade para criar quizzes personalizados para diferentes níveis de alunos", niche: "EdTech", title: "Gerador Adaptativo de Quizzes para Professores" },
+  { problem: "Hosts de podcast não têm forma automatizada de encontrar e convidar convidados relevantes", niche: "Mídia", title: "Matchmaker de Convidados para Podcast com IA" },
+  { problem: "Fundadores de SaaS não conseguem acompanhar lançamentos de funcionalidades da concorrência em tempo real", niche: "Ferramentas SaaS", title: "Rastreador em Tempo Real de Funcionalidades da Concorrência" },
+  { problem: "Redatores freelancers não têm ferramentas para centralizar briefings e prazos de clientes", niche: "Freelancers", title: "Central de Comando para Redatores Freelancers" },
+  { problem: "Times de RH levam semanas para criar materiais de onboarding para cada novo cargo", niche: "HR Tech", title: "Construtor de Conteúdo de Onboarding com IA" },
+  { problem: "ONGs têm dificuldade para escrever propostas de captação de recursos com eficiência", niche: "Terceiro Setor", title: "Redator de Projetos para Editais com IA" },
+  { problem: "Donos de pets não conseguem encontrar facilmente pet sitters confiáveis com avaliações verificadas", niche: "Cuidados com Pets", title: "Marketplace de Pet Sitters Verificados" },
 ];
 
 const solutions = [
-  "An AI-powered platform that automates the process end-to-end with minimal user input.",
-  "A SaaS tool with smart templates, AI suggestions, and one-click workflows.",
-  "A browser extension + dashboard combo that integrates with existing tools seamlessly.",
-  "A mobile-first app with push notifications and real-time collaboration features.",
-  "An API-first platform that plugs into existing workflows via integrations.",
+  "Uma plataforma com IA que automatiza o processo de ponta a ponta com mínima entrada do usuário.",
+  "Uma ferramenta SaaS com templates inteligentes, sugestões de IA e fluxos com um clique.",
+  "Uma combinação de extensão de navegador + dashboard que integra com ferramentas já usadas pelo cliente.",
+  "Um app mobile-first com notificações push e recursos de colaboração em tempo real.",
+  "Uma plataforma API-first que se conecta aos fluxos existentes via integrações.",
 ];
 
 const competitionLevels = ["Low", "Medium", "High"];
@@ -52,11 +52,11 @@ export function generateOpportunities(count: number) {
 }
 
 export const pipelineSteps = [
-  { id: "problems", label: "Detecting problems from online communities", agent: "Pain Hunter", duration: 1800 },
-  { id: "trends", label: "Identifying market trends", agent: "Trend Detector", duration: 1500 },
-  { id: "tools", label: "Analyzing existing tools & competitors", agent: "Tool Hunter", duration: 1400 },
-  { id: "niches", label: "Detecting niche markets", agent: "Niche Detector", duration: 1200 },
-  { id: "generate", label: "Generating SaaS opportunities", agent: "SaaS Generator", duration: 2000 },
-  { id: "filter", label: "Filtering saturated ideas", agent: "Saturation Filter", duration: 1000 },
-  { id: "score", label: "Scoring market potential", agent: "Market Predictor", duration: 1500 },
+  { id: "problems", label: "Detectando problemas em comunidades online", agent: "Pain Hunter", duration: 1800 },
+  { id: "trends", label: "Identificando tendências de mercado", agent: "Trend Detector", duration: 1500 },
+  { id: "tools", label: "Analisando ferramentas e concorrentes", agent: "Tool Hunter", duration: 1400 },
+  { id: "niches", label: "Detectando nichos de mercado", agent: "Niche Detector", duration: 1200 },
+  { id: "generate", label: "Gerando oportunidades de SaaS", agent: "SaaS Generator", duration: 2000 },
+  { id: "filter", label: "Filtrando ideias saturadas", agent: "Saturation Filter", duration: 1000 },
+  { id: "score", label: "Pontuando potencial de mercado", agent: "Market Predictor", duration: 1500 },
 ];
