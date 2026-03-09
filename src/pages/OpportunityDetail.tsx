@@ -265,9 +265,9 @@ export default function OpportunityDetail() {
                     saved ? "bg-success/10 text-success border border-success/30" : "bg-primary text-primary-foreground hover:opacity-90"
                   } disabled:opacity-60`}
                 >
-                  {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving...</>
-                    : saved ? <><CheckCircle2 className="h-3.5 w-3.5" /> Saved</>
-                    : <><Save className="h-3.5 w-3.5" /> Save Plan</>}
+                  {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Salvando...</>
+                    : saved ? <><CheckCircle2 className="h-3.5 w-3.5" /> Salvo</>
+                    : <><Save className="h-3.5 w-3.5" /> Salvar Plano</>}
                 </button>
               </div>
 
