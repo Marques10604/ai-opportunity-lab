@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.pain-hunter]
 verify_jwt = false
+
+[functions.generate-content-idea]
+verify_jwt = false
