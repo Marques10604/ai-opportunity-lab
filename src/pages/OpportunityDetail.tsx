@@ -187,7 +187,7 @@ export default function OpportunityDetail() {
             </RadialBarChart>
           </ResponsiveContainer>
           <p className="text-center text-2xl font-bold -mt-4" style={{ color: getScoreColor(ms) }}>{ms}</p>
-          <p className="text-center text-[10px] text-muted-foreground">out of 100</p>
+          <p className="text-center text-[10px] text-muted-foreground">de 100</p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="rounded-xl border border-border bg-card p-5">
