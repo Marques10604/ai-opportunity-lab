@@ -7,11 +7,18 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
+interface VideoScript {
+  hook: string;
+  problem: string;
+  insight: string;
+  cta: string;
+}
+
 interface ContentIdea {
   content_title: string;
   content_hook: string;
   content_type: string;
-  short_script: string;
+  video_script: VideoScript;
 }
 
 type SortOption = "viral_score" | "urgency_score" | "frequency_score";
