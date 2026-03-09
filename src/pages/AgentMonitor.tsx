@@ -12,13 +12,13 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const PIPELINE_AGENTS = [
-  { name: "Pain Hunter", icon: Search, color: "text-destructive", bg: "bg-destructive/10" },
-  { name: "Trend Detector", icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
-  { name: "Tool Hunter", icon: Wrench, color: "text-warning", bg: "bg-warning/10" },
-  { name: "Niche Detector", icon: Target, color: "text-accent", bg: "bg-accent/10" },
-  { name: "SaaS Generator", icon: Sparkles, color: "text-info", bg: "bg-info/10" },
-  { name: "Saturation Filter", icon: Filter, color: "text-warning", bg: "bg-warning/10" },
-  { name: "Market Predictor", icon: BarChart3, color: "text-success", bg: "bg-success/10" },
+  { name: "Pain Hunter", label: "Caçador de Problemas", icon: Search, color: "text-destructive", bg: "bg-destructive/10" },
+  { name: "Trend Detector", label: "Detector de Tendências", icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
+  { name: "Tool Hunter", label: "Caçador de Ferramentas", icon: Wrench, color: "text-warning", bg: "bg-warning/10" },
+  { name: "Niche Detector", label: "Detector de Nichos", icon: Target, color: "text-accent", bg: "bg-accent/10" },
+  { name: "SaaS Generator", label: "Gerador de SaaS", icon: Sparkles, color: "text-info", bg: "bg-info/10" },
+  { name: "Saturation Filter", label: "Filtro de Saturação", icon: Filter, color: "text-warning", bg: "bg-warning/10" },
+  { name: "Market Predictor", label: "Preditor de Mercado", icon: BarChart3, color: "text-success", bg: "bg-success/10" },
 ];
 
 const levelColors: Record<string, string> = {
