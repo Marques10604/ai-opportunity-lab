@@ -14,11 +14,21 @@ interface VideoScript {
   cta: string;
 }
 
+interface Carousel {
+  carousel_title: string;
+  slide_1_hook: string;
+  slide_2_problem: string;
+  slide_3_explanation: string;
+  slide_4_tip_or_solution: string;
+  slide_5_call_to_action: string;
+}
+
 interface ContentIdea {
   content_title: string;
   content_hook: string;
   content_type: string;
   video_script: VideoScript;
+  carousel: Carousel;
 }
 
 type SortOption = "viral_score" | "urgency_score" | "frequency_score";
