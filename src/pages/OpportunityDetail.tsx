@@ -50,8 +50,8 @@ export default function OpportunityDetail() {
 
   const opp = opportunities?.find((o) => o.id === id);
 
-  if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading...</div>;
-  if (!opp) return <div className="p-8 text-sm text-muted-foreground">Opportunity not found.</div>;
+  if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
+  if (!opp) return <div className="p-8 text-sm text-muted-foreground">Oportunidade não encontrada.</div>;
 
   const ms = opp.market_score ?? 0;
   const radialData = [{ name: "Score", value: ms, fill: getScoreColor(ms) }];
