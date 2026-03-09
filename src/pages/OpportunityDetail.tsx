@@ -229,7 +229,7 @@ export default function OpportunityDetail() {
           disabled={generating}
           className="rounded-xl p-4 font-semibold text-sm flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:opacity-90 transition-opacity glow-primary disabled:opacity-60"
         >
-          {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating MVP Plan...</> : <><Rocket className="h-4 w-4" /> {mvpPlan ? "Regenerate MVP Plan" : "Generate MVP Plan"}</>}
+          {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Gerando Plano MVP...</> : <><Rocket className="h-4 w-4" /> {mvpPlan ? "Regerar Plano MVP" : "Gerar Plano MVP"}</>}
         </motion.button>
 
         <motion.button
