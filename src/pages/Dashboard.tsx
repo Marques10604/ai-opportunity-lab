@@ -141,6 +141,8 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
+      <TopPatternsCard navigate={navigate} />
+
       <TrendsList />
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="rounded-xl border border-border bg-card">
