@@ -38,8 +38,8 @@ export async function seedUserData(userId: string) {
     { user_id: userId, agent_name: "Competitor Analyzer", role: "Busca pontos fracos de ferramentas populares em qualquer nicho (reviews, GitHub issues, Reddit, Twitter). Cria insights para conteúdo.", status: "active", last_run: new Date().toISOString() },
     { user_id: userId, agent_name: "5 Angles Engine", role: "Para cada dor encontrada, gera 5 versões de conteúdo: tutorial, polêmica, hack, comparativo, transformação. Adaptável a qualquer nicho.", status: "idle", last_run: null },
     { user_id: userId, agent_name: "Platform Personalizer", role: "Adapta automaticamente cada versão de conteúdo para Instagram, TikTok, LinkedIn, X e YouTube Shorts, mantendo Problema → Solução → Resultado.", status: "active", last_run: new Date().toISOString() },
-    { user_id: userId, agent_name: "Learning Loop", role: "Analisa métricas dos posts e retroalimenta os agentes com o que funciona", status: "active", last_run: new Date().toISOString() },
-    { user_id: userId, agent_name: "Trend Predictor", role: "Detecta sinais de tendências emergentes e calcula a Janela Ideal de postagem", status: "active", last_run: new Date().toISOString() },
-    { user_id: userId, agent_name: "Anti Saturation Filter", role: "Elimina ideias ruins, nichos saturados e hypes sem demanda antes de chegar até o usuário", status: "processing", last_run: new Date().toISOString() },
+    { user_id: userId, agent_name: "Learning Loop", role: "Analisa métricas de cada post publicado (visualizações, curtidas, comentários, compartilhamentos) e retroalimenta os agentes para priorizar dores e combinações de ferramentas que funcionam.", status: "active", last_run: new Date().toISOString() },
+    { user_id: userId, agent_name: "Trend Predictor", role: "Detecta sinais emergentes de temas com alta probabilidade de virar tendência e calcula a Janela Ideal de postagem.", status: "active", last_run: new Date().toISOString() },
+    { user_id: userId, agent_name: "Anti Saturation Filter", role: "Elimina ideias ruins, nichos saturados e hypes sem demanda real antes de chegar até o usuário.", status: "processing", last_run: new Date().toISOString() },
   ]);
 }
