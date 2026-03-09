@@ -32,6 +32,7 @@ const navItems = [
   { title: "Monitor de Agentes", url: "/agents", icon: Cpu },
   { title: "Tendências", url: "/trends", icon: TrendingUp },
   { title: "Problemas", url: "/problems", icon: AlertCircle },
+  { title: "Padrões", url: "/patterns", icon: Network },
   { title: "Oportunidades", url: "/opportunities", icon: Lightbulb },
   { title: "Planos Salvos", url: "/saved-plans", icon: FileText },
 ];
