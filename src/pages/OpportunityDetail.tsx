@@ -180,7 +180,7 @@ export default function OpportunityDetail() {
       {/* Charts */}
       <div className="grid md:grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold mb-2">Opportunity Score</h3>
+          <h3 className="text-sm font-semibold mb-2">Pontuação da Oportunidade</h3>
           <ResponsiveContainer width="100%" height={160}>
             <RadialBarChart cx="50%" cy="50%" innerRadius="60%" outerRadius="90%" startAngle={180} endAngle={0} data={radialData} barSize={12}>
               <RadialBar dataKey="value" cornerRadius={6} background={{ fill: "hsl(220,14%,18%)" }} />
