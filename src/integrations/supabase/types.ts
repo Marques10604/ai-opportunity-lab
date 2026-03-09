@@ -74,6 +74,56 @@ export type Database = {
         }
         Relationships: []
       }
+      content_opportunities: {
+        Row: {
+          created_at: string
+          gancho: string | null
+          id: string
+          plataforma: string | null
+          pontuacao_viral: number | null
+          roteiro_curto: string | null
+          slides_carrossel: Json | null
+          source_problem_id: string | null
+          tipo_conteudo: string | null
+          titulo_conteudo: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          gancho?: string | null
+          id?: string
+          plataforma?: string | null
+          pontuacao_viral?: number | null
+          roteiro_curto?: string | null
+          slides_carrossel?: Json | null
+          source_problem_id?: string | null
+          tipo_conteudo?: string | null
+          titulo_conteudo: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          gancho?: string | null
+          id?: string
+          plataforma?: string | null
+          pontuacao_viral?: number | null
+          roteiro_curto?: string | null
+          slides_carrossel?: Json | null
+          source_problem_id?: string | null
+          tipo_conteudo?: string | null
+          titulo_conteudo?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_opportunities_source_problem_id_fkey"
+            columns: ["source_problem_id"]
+            isOneToOne: false
+            referencedRelation: "detected_problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       detected_problems: {
         Row: {
           created_at: string
@@ -233,6 +283,50 @@ export type Database = {
             columns: ["source_pattern_id"]
             isOneToOne: false
             referencedRelation: "problem_patterns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_metrics: {
+        Row: {
+          comentarios: number | null
+          compartilhamentos: number | null
+          curtidas: number | null
+          data_coleta: string
+          id: string
+          post_id: string | null
+          salvamentos: number | null
+          user_id: string
+          visualizacoes: number | null
+        }
+        Insert: {
+          comentarios?: number | null
+          compartilhamentos?: number | null
+          curtidas?: number | null
+          data_coleta?: string
+          id?: string
+          post_id?: string | null
+          salvamentos?: number | null
+          user_id: string
+          visualizacoes?: number | null
+        }
+        Update: {
+          comentarios?: number | null
+          compartilhamentos?: number | null
+          curtidas?: number | null
+          data_coleta?: string
+          id?: string
+          post_id?: string | null
+          salvamentos?: number | null
+          user_id?: string
+          visualizacoes?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_metrics_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "content_opportunities"
             referencedColumns: ["id"]
           },
         ]
