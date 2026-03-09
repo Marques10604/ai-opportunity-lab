@@ -40,6 +40,7 @@ const AppRoutes = () => (
     <Route path="/problems" element={<ProtectedRoute><AppLayout><Problems /></AppLayout></ProtectedRoute>} />
     <Route path="/patterns" element={<ProtectedRoute><AppLayout><Patterns /></AppLayout></ProtectedRoute>} />
     <Route path="/contents" element={<ProtectedRoute><AppLayout><ContentOpportunities /></AppLayout></ProtectedRoute>} />
+    <Route path="/contents/:id" element={<ProtectedRoute><AppLayout><ContentDetail /></AppLayout></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
