@@ -206,7 +206,7 @@ export default function OpportunityDetail() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold mb-2">Market Growth Projection</h3>
+          <h3 className="text-sm font-semibold mb-2">Projeção de Crescimento</h3>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={growthData} margin={{ left: -10, right: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,14%,18%)" />
