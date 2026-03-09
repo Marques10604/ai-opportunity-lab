@@ -106,21 +106,51 @@ export default function Dashboard() {
     }
   };
 
+  const addLog = (icon: string, text: string, level: "info" | "success" | "warn" = "info") => {
+    const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setPipelineLogs((prev) => [...prev, { time, icon, text, level }]);
+  };
+
+  const startStep = (step: number) => {
+    setPipelineStep(step);
+    setStepStartTime(Date.now());
+    setStepElapsed(0);
+  };
+
+  // Timer for current step elapsed
+  useEffect(() => {
+    if (!pipelineRunning || pipelineStep === 0 || pipelineStep === 4) return;
+    const interval = setInterval(() => {
+      setStepElapsed(Math.floor((Date.now() - stepStartTime) / 1000));
+    }, 500);
+    return () => clearInterval(interval);
+  }, [pipelineRunning, pipelineStep, stepStartTime]);
+
   const runFullPipeline = async () => {
     if (!user) return;
     setPipelineRunning(true);
-    setPipelineStep(1);
+    setPipelineLogs([]);
+    const totalStart = Date.now();
 
     try {
       // Step 1: Pain Hunter
-      const { error: phError } = await supabase.functions.invoke("pain-hunter", {
+      startStep(1);
+      addLog("🔍", "Iniciando Caçador de Problemas...");
+      addLog("⏱️", "Tempo estimado: ~15-25 segundos");
+
+      const { data: phData, error: phError } = await supabase.functions.invoke("pain-hunter", {
         body: { test_mode: true },
       });
       if (phError) throw new Error(`Caçador de Problemas: ${phError.message}`);
+      const problemCount = phData?.inserted || phData?.problems?.length || 0;
+      addLog("✅", `${problemCount} problemas detectados e armazenados`, "success");
       queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
 
       // Step 2: Detect Patterns
-      setPipelineStep(2);
+      startStep(2);
+      addLog("🔗", "Iniciando Detector de Padrões...");
+      addLog("⏱️", "Tempo estimado: ~10-20 segundos");
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Sessão expirada");
 
@@ -135,10 +165,21 @@ export default function Dashboard() {
       const patterns = patternData?.patterns || [];
       if (patterns.length === 0) throw new Error("Nenhum padrão detectado para gerar oportunidades.");
 
+      addLog("✅", `${patterns.length} padrões agrupados com sucesso`, "success");
+      patterns.forEach((p: any) => {
+        addLog("📊", `Padrão: "${p.pattern_title}" — ${p.total_occurrences || 0} ocorrências`);
+      });
+
       // Step 3: Generate Opportunities from each pattern
-      setPipelineStep(3);
+      startStep(3);
+      addLog("💡", "Iniciando Gerador de Oportunidades...");
+      addLog("⏱️", `Tempo estimado: ~${patterns.length * 10}-${patterns.length * 20}s (${patterns.length} padrões)`);
+
       let totalOpps = 0;
-      for (const pattern of patterns) {
+      for (let i = 0; i < patterns.length; i++) {
+        const pattern = patterns[i];
+        addLog("🔄", `Gerando oportunidades para "${pattern.pattern_title}" (${i + 1}/${patterns.length})...`);
+
         const { data: oppData, error: oppError } = await supabase.functions.invoke("generate-opportunities", {
           body: {
             pattern_context: {
@@ -149,7 +190,7 @@ export default function Dashboard() {
           },
         });
         if (oppError) {
-          console.error("Erro ao gerar oportunidades para padrão:", pattern.pattern_title, oppError);
+          addLog("⚠️", `Erro no padrão "${pattern.pattern_title}": ${oppError.message}`, "warn");
           continue;
         }
         const opps = oppData?.opportunities || [];
@@ -158,19 +199,25 @@ export default function Dashboard() {
             opps.map((o: any) => ({ ...o, user_id: user.id, source_pattern_id: pattern.id }))
           );
           totalOpps += opps.length;
+          opps.forEach((o: any) => {
+            addLog("🎯", `Nova oportunidade: "${o.title}" (score: ${o.market_score})`, "success");
+          });
         }
       }
 
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["agent_logs"] });
-      setPipelineStep(4);
-      toast.success(`Pipeline completo! ${patterns.length} padrões → ${totalOpps} oportunidades geradas.`);
 
-      // Auto-reset after 3s
-      setTimeout(() => { setPipelineStep(0); setPipelineRunning(false); }, 3000);
+      const totalTime = Math.round((Date.now() - totalStart) / 1000);
+      startStep(4);
+      addLog("🏁", `Pipeline concluído em ${totalTime}s — ${patterns.length} padrões → ${totalOpps} oportunidades`, "success");
+      toast.success(`Pipeline completo em ${totalTime}s! ${totalOpps} oportunidades geradas.`);
+
+      setTimeout(() => { setPipelineStep(0); setPipelineRunning(false); }, 5000);
       return;
     } catch (err: any) {
       console.error("Erro no pipeline:", err);
+      addLog("❌", err?.message || "Erro desconhecido", "warn");
       toast.error(err?.message || "Erro ao executar pipeline completo");
     }
     setPipelineStep(0);
