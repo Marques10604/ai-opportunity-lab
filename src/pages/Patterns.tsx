@@ -107,7 +107,7 @@ export default function Patterns() {
     },
     onSuccess: (count) => {
       setGeneratingPatternId(null);
-      toast.success(`${count} oportunidades geradas a partir do padrão!`);
+      toast.success("Oportunidades geradas a partir do padrão.");
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     },
     onError: (err: any) => {
