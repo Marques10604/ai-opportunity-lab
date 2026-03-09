@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAgents, useAgentLogs } from "@/hooks/useSupabaseData";
 import {
   Search, Sparkles, Activity, TrendingUp, Play, Loader2, Zap, Clock, CheckCircle2,
-  Layers, Eye, LayoutPanelLeft, Share2,
+  Layers, Eye, LayoutPanelLeft, Share2, RefreshCw, Filter,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
