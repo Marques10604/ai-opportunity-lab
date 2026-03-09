@@ -125,7 +125,7 @@ export default function OpportunityDetail() {
       setBlueprint(data);
     } catch (err: any) {
       console.error("Blueprint generation error:", err);
-      toast.error(err?.message || "Failed to generate blueprint");
+      toast.error(err?.message || "Falha ao gerar blueprint");
     }
     setGeneratingBlueprint(false);
   };
