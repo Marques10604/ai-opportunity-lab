@@ -59,12 +59,22 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
           <p className="text-sm text-muted-foreground mt-1">Visão em tempo real da descoberta de oportunidades com IA</p>
         </div>
-        <button
-          onClick={() => setDiscoveryOpen(true)}
-          className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity glow-primary"
-        >
-          <Zap className="h-4 w-4" /> Descobrir Oportunidades
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={runPainHunter}
+            disabled={painHunterLoading}
+            className="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors disabled:opacity-50"
+          >
+            {painHunterLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            Executar Pain Hunter
+          </button>
+          <button
+            onClick={() => setDiscoveryOpen(true)}
+            className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity glow-primary"
+          >
+            <Zap className="h-4 w-4" /> Descobrir Oportunidades
+          </button>
+        </div>
       </div>
 
       <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); navigate("/opportunities"); }} />
