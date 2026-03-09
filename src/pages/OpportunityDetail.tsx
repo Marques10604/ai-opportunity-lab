@@ -254,8 +254,8 @@ export default function OpportunityDetail() {
                 <div className="flex items-center gap-3">
                   <FileText className="h-5 w-5 text-primary" />
                   <div>
-                    <h2 className="text-lg font-bold">MVP Plan: {opp.title}</h2>
-                    <p className="text-[11px] text-muted-foreground font-mono">Generated {new Date().toLocaleDateString()}</p>
+                    <h2 className="text-lg font-bold">Plano MVP: {opp.title}</h2>
+                    <p className="text-[11px] text-muted-foreground font-mono">Gerado em {new Date().toLocaleDateString("pt-BR")}</p>
                   </div>
                 </div>
                 <button
