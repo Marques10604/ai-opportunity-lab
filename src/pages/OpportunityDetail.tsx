@@ -240,7 +240,7 @@ export default function OpportunityDetail() {
           disabled={generatingBlueprint}
           className="rounded-xl p-4 font-semibold text-sm flex items-center justify-center gap-2 bg-accent text-accent-foreground hover:opacity-90 transition-opacity disabled:opacity-60"
         >
-          {generatingBlueprint ? <><Loader2 className="h-4 w-4 animate-spin" /> Building Blueprint...</> : <><Wrench className="h-4 w-4" /> {blueprint ? "Rebuild MVP Blueprint" : "Build MVP"}</>}
+          {generatingBlueprint ? <><Loader2 className="h-4 w-4 animate-spin" /> Gerando Blueprint...</> : <><Wrench className="h-4 w-4" /> {blueprint ? "Regerar Blueprint MVP" : "Construir MVP"}</>}
         </motion.button>
       </div>
 
