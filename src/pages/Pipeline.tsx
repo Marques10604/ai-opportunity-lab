@@ -12,25 +12,32 @@ const agentIcons: Record<string, React.ElementType> = {
   "Market Predictor": BarChart3,
 };
 
+const statusLabel = (status: string | null) => {
+  if (status === "active") return "ativo";
+  if (status === "processing") return "processando";
+  if (status === "idle") return "inativo";
+  return status ?? "-";
+};
+
 export default function Pipeline() {
   const { data: agents, isLoading } = useAgents();
 
   const pipelineNodes = [
-    { id: "sources", name: "Data Sources", icon: Database, status: null },
+    { id: "sources", name: "Fontes de Dados", icon: Database, status: null },
     ...(agents?.map((a) => ({ id: a.id, name: a.agent_name, icon: agentIcons[a.agent_name] || Sparkles, status: a.status })) ?? []),
-    { id: "results", name: "Opportunity Results", icon: Sparkles, status: null },
+    { id: "results", name: "Resultados de Oportunidades", icon: Sparkles, status: null },
   ];
 
   return (
     <div className="space-y-8 max-w-7xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Agent Pipeline</h1>
-        <p className="text-sm text-muted-foreground mt-1">Visual overview of the AI agent processing pipeline</p>
+        <h1 className="text-2xl font-bold tracking-tight">Pipeline de Agentes</h1>
+        <p className="text-sm text-muted-foreground mt-1">Visão geral do pipeline de processamento dos agentes de IA</p>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-6 overflow-x-auto">
         {isLoading ? (
-          <div className="text-sm text-muted-foreground">Loading pipeline...</div>
+          <div className="text-sm text-muted-foreground">Carregando pipeline...</div>
         ) : (
           <div className="flex items-center gap-2 min-w-max">
             {pipelineNodes.map((node, i) => {
@@ -53,7 +60,7 @@ export default function Pipeline() {
                         <span className={`h-1.5 w-1.5 rounded-full ${
                           node.status === "active" ? "bg-success" : node.status === "processing" ? "bg-warning animate-pulse-glow" : "bg-muted-foreground/40"
                         }`} />
-                        <span className="text-[9px] text-muted-foreground capitalize">{node.status}</span>
+                        <span className="text-[9px] text-muted-foreground">{statusLabel(node.status)}</span>
                       </div>
                     )}
                   </div>
@@ -66,9 +73,9 @@ export default function Pipeline() {
       </div>
 
       <div>
-        <h2 className="text-lg font-semibold mb-4">Agent Network</h2>
+        <h2 className="text-lg font-semibold mb-4">Rede de Agentes</h2>
         {isLoading ? (
-          <div className="text-sm text-muted-foreground">Loading...</div>
+          <div className="text-sm text-muted-foreground">Carregando...</div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {agents?.map((agent, i) => {
@@ -86,14 +93,14 @@ export default function Pipeline() {
                           <span className={`h-1.5 w-1.5 rounded-full ${
                             agent.status === "active" ? "bg-success" : agent.status === "processing" ? "bg-warning animate-pulse-glow" : "bg-muted-foreground/40"
                           }`} />
-                          <span className="text-[10px] text-muted-foreground capitalize font-mono">{agent.status}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono">{statusLabel(agent.status)}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                   <p className="text-[11px] text-muted-foreground">{agent.role}</p>
                   {agent.last_run && (
-                    <p className="text-[9px] text-muted-foreground/60 mt-2 font-mono">Last run: {new Date(agent.last_run).toLocaleString()}</p>
+                    <p className="text-[9px] text-muted-foreground/60 mt-2 font-mono">Última execução: {new Date(agent.last_run).toLocaleString("pt-BR")}</p>
                   )}
                 </motion.div>
               );
