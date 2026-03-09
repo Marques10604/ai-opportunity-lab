@@ -5,8 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Network, Trash2, TrendingUp, Hash, Sparkles } from "lucide-react";
+import { Loader2, Network, Trash2, TrendingUp, Hash, Sparkles, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface RelatedProblem {
   id: string;

@@ -12,11 +12,32 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { niches, trends, tools } = await req.json();
+    const { niches, trends, tools, pattern_context } = await req.json();
 
     const systemPrompt = `You are a SaaS opportunity discovery AI. You analyze market data, problems, niches, and tools to generate viable SaaS startup ideas. Always return structured JSON.`;
 
-    const userPrompt = `Based on the following market intelligence, generate 4 unique SaaS opportunities:
+    let userPrompt: string;
+
+    if (pattern_context) {
+      const { pattern_title, pattern_description, related_problems } = pattern_context;
+      const problemsList = (related_problems || []).map((p: any) => `- ${p.title} (viral: ${p.viral_score})`).join("\n");
+      userPrompt = `Based on the following detected problem pattern, generate 3 targeted SaaS opportunities that directly solve this pattern:
+
+**Pattern:** ${pattern_title}
+**Description:** ${pattern_description || "N/A"}
+**Related Problems:**
+${problemsList}
+
+For each opportunity, provide:
+- title: catchy product name
+- niche: target market niche
+- problem: specific pain point directly related to the pattern (2-3 sentences)
+- solution: proposed SaaS solution (2-3 sentences)
+- market_score: 1-100 market potential score
+- competition_level: "Low", "Medium", or "High"
+- difficulty_level: "Low", "Medium", or "High"`;
+    } else {
+      userPrompt = `Based on the following market intelligence, generate 4 unique SaaS opportunities:
 
 **Detected Niches:** ${(niches || ["Developer Tools", "EdTech", "Healthcare", "Creator Economy"]).join(", ")}
 **Market Trends:** ${(trends || ["AI automation", "Remote work tools", "No-code platforms", "API-first products"]).join(", ")}
@@ -30,6 +51,7 @@ For each opportunity, provide:
 - market_score: 1-100 market potential score
 - competition_level: "Low", "Medium", or "High"
 - difficulty_level: "Low", "Medium", or "High"`;
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
