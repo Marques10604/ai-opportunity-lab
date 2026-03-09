@@ -255,7 +255,6 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-      </div>
 
       <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); navigate("/opportunities"); }} />
 
