@@ -153,9 +153,9 @@ export default function OpportunityDetail() {
       {/* Score Cards */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Market Potential", value: `${ms}/100`, icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
-          { label: "Competition", value: opp.competition_level ?? "Medium", icon: Shield, color: levelColor(opp.competition_level), bg: levelBg(opp.competition_level) },
-          { label: "Build Difficulty", value: opp.difficulty_level ?? "Medium", icon: Gauge, color: levelColor(opp.difficulty_level), bg: levelBg(opp.difficulty_level) },
+          { label: "Potencial de Mercado", value: `${ms}/100`, icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
+          { label: "Concorrência", value: opp.competition_level ?? "Medium", icon: Shield, color: levelColor(opp.competition_level), bg: levelBg(opp.competition_level) },
+          { label: "Dificuldade", value: opp.difficulty_level ?? "Medium", icon: Gauge, color: levelColor(opp.difficulty_level), bg: levelBg(opp.difficulty_level) },
         ].map((item, i) => (
           <motion.div key={item.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="rounded-xl border border-border bg-card p-4">
             <div className={`h-8 w-8 rounded-lg ${item.bg} flex items-center justify-center mb-3`}><item.icon className={`h-4 w-4 ${item.color}`} /></div>
