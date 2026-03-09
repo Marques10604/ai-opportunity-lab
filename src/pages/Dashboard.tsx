@@ -273,6 +273,14 @@ export default function Dashboard() {
             {pipelineRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             Pipeline Completo
           </button>
+          {pipelineRunning && (
+            <button
+              onClick={cancelPipeline}
+              className="h-9 px-4 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity"
+            >
+              <Square className="h-4 w-4" /> Parar
+            </button>
+          )}
           <button
             onClick={() => setDiscoveryOpen(true)}
             disabled={pipelineRunning}
