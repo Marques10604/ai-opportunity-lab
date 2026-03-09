@@ -79,6 +79,7 @@ export default function Dashboard() {
   const [pipelineRunning, setPipelineRunning] = useState(false);
   const [pipelineStep, setPipelineStep] = useState<number>(0);
   const [pipelineLogs, setPipelineLogs] = useState<{ time: string; icon: string; text: string; level: "info" | "success" | "warn" }[]>([]);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [stepStartTime, setStepStartTime] = useState<number>(0);
   const [stepElapsed, setStepElapsed] = useState<number>(0);
   const { data: opportunities, isLoading: oppLoading } = useOpportunities();
