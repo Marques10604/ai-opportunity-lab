@@ -79,6 +79,7 @@ export type Database = {
           created_at: string
           frequency_score: number | null
           id: string
+          nichos: string | null
           problem_description: string | null
           problem_title: string
           source_platform: string | null
@@ -90,6 +91,7 @@ export type Database = {
           created_at?: string
           frequency_score?: number | null
           id?: string
+          nichos?: string | null
           problem_description?: string | null
           problem_title: string
           source_platform?: string | null
@@ -101,6 +103,7 @@ export type Database = {
           created_at?: string
           frequency_score?: number | null
           id?: string
+          nichos?: string | null
           problem_description?: string | null
           problem_title?: string
           source_platform?: string | null
@@ -239,6 +242,7 @@ export type Database = {
           average_viral_score: number | null
           created_at: string
           id: string
+          oportunidades_geradas: Json | null
           pattern_description: string | null
           pattern_title: string
           related_problems: Json | null
@@ -249,6 +253,7 @@ export type Database = {
           average_viral_score?: number | null
           created_at?: string
           id?: string
+          oportunidades_geradas?: Json | null
           pattern_description?: string | null
           pattern_title: string
           related_problems?: Json | null
@@ -259,6 +264,7 @@ export type Database = {
           average_viral_score?: number | null
           created_at?: string
           id?: string
+          oportunidades_geradas?: Json | null
           pattern_description?: string | null
           pattern_title?: string
           related_problems?: Json | null
