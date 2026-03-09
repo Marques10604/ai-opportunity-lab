@@ -214,6 +214,12 @@ export default function Problems() {
                         <span className="text-xs font-mono text-muted-foreground w-8">{problem.urgency_score ?? 0}</span>
                       </div>
                     </td>
+                    <td className="p-4 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-destructive/10 text-destructive text-xs font-bold">
+                        <Flame className="h-3 w-3" />
+                        {problem.viral_score ?? 0}
+                      </span>
+                    </td>
                     <td className="p-4 text-muted-foreground text-xs font-mono">
                       {problem.created_at
                         ? format(new Date(problem.created_at), "dd MMM yyyy, HH:mm", { locale: ptBR })
