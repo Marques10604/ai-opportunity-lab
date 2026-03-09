@@ -279,7 +279,7 @@ export default function OpportunityDetail() {
 
               {/* Core Features */}
               <div className="px-6 py-5 border-b border-border">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" /> Core Features</h3>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" /> Funcionalidades Principais</h3>
                 <div className="grid md:grid-cols-2 gap-3">
                   {mvpPlan.core_features.map((f, i) => (
                     <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="flex gap-3 rounded-lg border border-border bg-secondary/30 p-3">
