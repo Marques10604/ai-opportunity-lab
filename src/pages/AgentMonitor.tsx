@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAgents, useAgentLogs } from "@/hooks/useSupabaseData";
 import {
-  Search, Sparkles, Activity, TrendingUp, Wrench, Target, Filter,
-  BarChart3, Play, Loader2, Zap, Clock, CheckCircle2,
+  Search, Sparkles, Activity, TrendingUp, Play, Loader2, Zap, Clock, CheckCircle2,
+  Layers, Eye, LayoutPanelLeft, Share2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
