@@ -93,8 +93,8 @@ export default function Dashboard() {
       if (error) throw error;
       toast.success("Caçador de Problemas executado. Problemas armazenados com sucesso.");
     } catch (err: any) {
-      console.error("Erro ao executar Pain Hunter:", err);
-      toast.error(err?.message || "Erro ao executar Pain Hunter");
+      console.error("Erro ao executar Caçador de Problemas:", err);
+      toast.error(err?.message || "Erro ao executar Caçador de Problemas");
     } finally {
       setPainHunterLoading(false);
     }
