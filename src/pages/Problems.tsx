@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, Calendar, Crown, Globe, Lightbulb, Loader2, TrendingUp, X, Zap, Film, LayoutGrid, MessageSquare } from "lucide-react";
+import { AlertCircle, Calendar, Crown, Flame, Globe, Lightbulb, Loader2, TrendingUp, X, Zap, Film, LayoutGrid, MessageSquare, ArrowUpDown } from "lucide-react";
 import { useDetectedProblems } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -14,14 +14,23 @@ interface ContentIdea {
   short_script: string;
 }
 
+type SortOption = "viral_score" | "urgency_score" | "frequency_score";
+
 const contentTypeIcon = (type: string) => {
   if (type.includes("vídeo") || type.includes("video")) return <Film className="h-4 w-4" />;
   if (type.includes("carrossel") || type.includes("carousel")) return <LayoutGrid className="h-4 w-4" />;
   return <MessageSquare className="h-4 w-4" />;
 };
 
+const sortOptions: { value: SortOption; label: string }[] = [
+  { value: "viral_score", label: "Viral Score" },
+  { value: "urgency_score", label: "Urgência" },
+  { value: "frequency_score", label: "Frequência" },
+];
+
 export default function Problems() {
-  const { data: problems, isLoading } = useDetectedProblems();
+  const [sortBy, setSortBy] = useState<SortOption>("viral_score");
+  const { data: problems, isLoading } = useDetectedProblems(sortBy);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [contentIdea, setContentIdea] = useState<ContentIdea | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -29,7 +38,7 @@ export default function Problems() {
   const topProblems = useMemo(() => {
     if (!problems?.length) return [];
     return [...problems]
-      .sort((a, b) => ((b.frequency_score ?? 0) + (b.urgency_score ?? 0)) - ((a.frequency_score ?? 0) + (a.urgency_score ?? 0)))
+      .sort((a, b) => ((b.viral_score ?? 0)) - ((a.viral_score ?? 0)))
       .slice(0, 5);
   }, [problems]);
 
