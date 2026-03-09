@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAgents, useAgentLogs } from "@/hooks/useSupabaseData";
 import {
   Search, Sparkles, Activity, TrendingUp, Play, Loader2, Zap, Clock, CheckCircle2,
-  Layers, Eye, LayoutPanelLeft, Share2,
+  Layers, Eye, LayoutPanelLeft, Share2, RefreshCw, Filter,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -17,6 +17,9 @@ const PIPELINE_AGENTS = [
   { name: "Competitor Analyzer", label: "Análise de Concorrentes", icon: Eye, color: "text-warning", bg: "bg-warning/10" },
   { name: "5 Angles Engine", label: "Motor de 5 Ângulos", icon: LayoutPanelLeft, color: "text-accent", bg: "bg-accent/10" },
   { name: "Platform Personalizer", label: "Personalizador por Plataforma", icon: Share2, color: "text-success", bg: "bg-success/10" },
+  { name: "Learning Loop", label: "Loop de Aprendizado", icon: RefreshCw, color: "text-info", bg: "bg-info/10" },
+  { name: "Trend Predictor", label: "Previsor de Tendências", icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
+  { name: "Anti Saturation Filter", label: "Filtro Anti-Saturação", icon: Filter, color: "text-warning", bg: "bg-warning/10" },
 ];
 
 const levelColors: Record<string, string> = {

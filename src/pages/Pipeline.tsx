@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { useAgents } from "@/hooks/useSupabaseData";
-import { Search, Sparkles, Database, ArrowRight, Layers, Eye, LayoutPanelLeft, Share2 } from "lucide-react";
+import { Search, Sparkles, Database, ArrowRight, Layers, Eye, LayoutPanelLeft, Share2, RefreshCw, TrendingUp, Filter } from "lucide-react";
 
 const agentIcons: Record<string, React.ElementType> = {
   "Pain Hunter": Search,
@@ -8,6 +8,9 @@ const agentIcons: Record<string, React.ElementType> = {
   "Competitor Analyzer": Eye,
   "5 Angles Engine": LayoutPanelLeft,
   "Platform Personalizer": Share2,
+  "Learning Loop": RefreshCw,
+  "Trend Predictor": TrendingUp,
+  "Anti Saturation Filter": Filter,
 };
 
 const agentLabels: Record<string, string> = {
@@ -16,6 +19,9 @@ const agentLabels: Record<string, string> = {
   "Competitor Analyzer": "Análise de Concorrentes",
   "5 Angles Engine": "Motor de 5 Ângulos",
   "Platform Personalizer": "Personalizador por Plataforma",
+  "Learning Loop": "Loop de Aprendizado",
+  "Trend Predictor": "Previsor de Tendências",
+  "Anti Saturation Filter": "Filtro Anti-Saturação",
 };
 
 const statusLabel = (status: string | null) => {
