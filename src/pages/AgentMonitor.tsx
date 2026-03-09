@@ -169,7 +169,7 @@ export default function AgentMonitor() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-medium">{agent.agent_name}</p>
+                      <p className="text-xs font-medium">{pAgent?.label || agent.agent_name}</p>
                       <span className={`h-1.5 w-1.5 rounded-full ${
                         agent.status === "active" ? "bg-success" : agent.status === "processing" ? "bg-warning animate-pulse" : "bg-muted-foreground/40"
                       }`} />
