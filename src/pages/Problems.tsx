@@ -172,10 +172,13 @@ export default function Problems() {
                     <div className="flex items-center gap-2"><Globe className="h-4 w-4" />Plataforma</div>
                   </th>
                   <th className="text-center p-4 font-medium text-muted-foreground">
-                    <div className="flex items-center justify-center gap-2"><TrendingUp className="h-4 w-4" />Frequência</div>
+                    <div className="flex items-center justify-center gap-2"><TrendingUp className="h-4 w-4" />Freq.</div>
                   </th>
                   <th className="text-center p-4 font-medium text-muted-foreground">
-                    <div className="flex items-center justify-center gap-2"><Zap className="h-4 w-4" />Urgência</div>
+                    <div className="flex items-center justify-center gap-2"><Zap className="h-4 w-4" />Urg.</div>
+                  </th>
+                  <th className="text-center p-4 font-medium text-muted-foreground">
+                    <div className="flex items-center justify-center gap-2"><Flame className="h-4 w-4" />Viral</div>
                   </th>
                   <th className="text-left p-4 font-medium text-muted-foreground">
                     <div className="flex items-center gap-2"><Calendar className="h-4 w-4" />Data</div>
