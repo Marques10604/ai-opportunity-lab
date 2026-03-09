@@ -352,7 +352,7 @@ export default function OpportunityDetail() {
             {/* Save reminder */}
             {!saved && (
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                <Save className="h-3 w-3" /> Don't forget to save your plan
+                <Save className="h-3 w-3" /> Não esqueça de salvar seu plano
               </div>
             )}
           </motion.div>
