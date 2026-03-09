@@ -28,7 +28,9 @@ interface Pattern {
 export default function Patterns() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [sortBy, setSortBy] = useState<"occurrences" | "viral">("occurrences");
+  const [generatingPatternId, setGeneratingPatternId] = useState<string | null>(null);
 
   const { data: patterns = [], isLoading } = useQuery({
     queryKey: ["problem_patterns", user?.id],
