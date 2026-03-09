@@ -22,6 +22,7 @@ const tipoIcons: Record<string, React.ElementType> = {
 };
 
 export default function ContentOpportunities() {
+  const navigate = useNavigate();
   const { data: contents, isLoading } = useContentOpportunities();
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
