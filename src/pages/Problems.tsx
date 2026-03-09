@@ -14,11 +14,21 @@ interface VideoScript {
   cta: string;
 }
 
+interface Carousel {
+  carousel_title: string;
+  slide_1_hook: string;
+  slide_2_problem: string;
+  slide_3_explanation: string;
+  slide_4_tip_or_solution: string;
+  slide_5_call_to_action: string;
+}
+
 interface ContentIdea {
   content_title: string;
   content_hook: string;
   content_type: string;
   video_script: VideoScript;
+  carousel: Carousel;
 }
 
 type SortOption = "viral_score" | "urgency_score" | "frequency_score";
@@ -335,11 +345,67 @@ export default function Problems() {
                     onClick={() => {
                       const script = `🎯 HOOK:\n${contentIdea.video_script?.hook}\n\n😩 PROBLEMA:\n${contentIdea.video_script?.problem}\n\n💡 INSIGHT:\n${contentIdea.video_script?.insight}\n\n📣 CTA:\n${contentIdea.video_script?.cta}`;
                       navigator.clipboard.writeText(script);
-                      toast.success("Roteiro copiado!");
+                      toast.success("Roteiro de vídeo copiado!");
                     }}
                     className="w-full h-9 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors"
                   >
-                    📋 Copiar Roteiro
+                    📋 Copiar Roteiro de Vídeo
+                  </button>
+                </div>
+
+                {/* Carousel Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <LayoutGrid className="h-4 w-4 text-accent" />
+                    <p className="text-sm font-semibold">Carrossel Instagram (5 slides)</p>
+                  </div>
+
+                  <div className="rounded-lg border border-accent/30 bg-accent/5 p-3 mb-2">
+                    <p className="text-[10px] uppercase tracking-widest text-accent font-bold mb-1">📌 Título do Carrossel</p>
+                    <p className="text-sm font-semibold text-foreground">{contentIdea.carousel?.carousel_title}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-5 gap-2">
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-2.5 text-center">
+                      <p className="text-[9px] uppercase tracking-widest text-destructive font-bold mb-1">Slide 1</p>
+                      <p className="text-[10px] text-muted-foreground mb-1">Hook</p>
+                      <p className="text-xs text-foreground leading-tight">{contentIdea.carousel?.slide_1_hook}</p>
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-secondary/30 p-2.5 text-center">
+                      <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold mb-1">Slide 2</p>
+                      <p className="text-[10px] text-muted-foreground mb-1">Problema</p>
+                      <p className="text-xs text-foreground leading-tight">{contentIdea.carousel?.slide_2_problem}</p>
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-secondary/30 p-2.5 text-center">
+                      <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold mb-1">Slide 3</p>
+                      <p className="text-[10px] text-muted-foreground mb-1">Explicação</p>
+                      <p className="text-xs text-foreground leading-tight">{contentIdea.carousel?.slide_3_explanation}</p>
+                    </div>
+
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5 text-center">
+                      <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-1">Slide 4</p>
+                      <p className="text-[10px] text-muted-foreground mb-1">Solução</p>
+                      <p className="text-xs text-foreground leading-tight">{contentIdea.carousel?.slide_4_tip_or_solution}</p>
+                    </div>
+
+                    <div className="rounded-lg border border-success/30 bg-success/5 p-2.5 text-center">
+                      <p className="text-[9px] uppercase tracking-widest text-success font-bold mb-1">Slide 5</p>
+                      <p className="text-[10px] text-muted-foreground mb-1">CTA</p>
+                      <p className="text-xs text-foreground leading-tight">{contentIdea.carousel?.slide_5_call_to_action}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const carousel = `📌 ${contentIdea.carousel?.carousel_title}\n\n🔥 SLIDE 1 - HOOK:\n${contentIdea.carousel?.slide_1_hook}\n\n😩 SLIDE 2 - PROBLEMA:\n${contentIdea.carousel?.slide_2_problem}\n\n📖 SLIDE 3 - EXPLICAÇÃO:\n${contentIdea.carousel?.slide_3_explanation}\n\n💡 SLIDE 4 - SOLUÇÃO:\n${contentIdea.carousel?.slide_4_tip_or_solution}\n\n📣 SLIDE 5 - CTA:\n${contentIdea.carousel?.slide_5_call_to_action}`;
+                      navigator.clipboard.writeText(carousel);
+                      toast.success("Carrossel copiado!");
+                    }}
+                    className="w-full h-9 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors"
+                  >
+                    📋 Copiar Carrossel
                   </button>
                 </div>
               </div>
