@@ -91,7 +91,7 @@ export default function Dashboard() {
         body: { test_mode: true },
       });
       if (error) throw error;
-      toast.success("Pain Hunter concluído. Problemas armazenados no banco de dados.");
+      toast.success("Caçador de Problemas executado. Problemas armazenados com sucesso.");
     } catch (err: any) {
       console.error("Erro ao executar Pain Hunter:", err);
       toast.error(err?.message || "Erro ao executar Pain Hunter");
