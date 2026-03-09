@@ -84,6 +84,7 @@ export type Database = {
           source_platform: string | null
           urgency_score: number | null
           user_id: string
+          viral_score: number | null
         }
         Insert: {
           created_at?: string
@@ -94,6 +95,7 @@ export type Database = {
           source_platform?: string | null
           urgency_score?: number | null
           user_id: string
+          viral_score?: number | null
         }
         Update: {
           created_at?: string
@@ -104,6 +106,7 @@ export type Database = {
           source_platform?: string | null
           urgency_score?: number | null
           user_id?: string
+          viral_score?: number | null
         }
         Relationships: []
       }
