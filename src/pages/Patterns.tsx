@@ -81,6 +81,41 @@ export default function Patterns() {
     },
   });
 
+  const generateFromPatternMutation = useMutation({
+    mutationFn: async (pattern: Pattern) => {
+      setGeneratingPatternId(pattern.id);
+      const { data, error } = await supabase.functions.invoke("generate-opportunities", {
+        body: {
+          pattern_context: {
+            pattern_title: pattern.pattern_title,
+            pattern_description: pattern.pattern_description,
+            related_problems: pattern.related_problems,
+          },
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const opportunities = data.opportunities || [];
+      if (opportunities.length === 0) throw new Error("Nenhuma oportunidade gerada");
+
+      const { error: insertError } = await supabase.from("opportunities").insert(
+        opportunities.map((o: any) => ({ ...o, user_id: user!.id }))
+      );
+      if (insertError) throw insertError;
+      return opportunities.length;
+    },
+    onSuccess: (count) => {
+      setGeneratingPatternId(null);
+      toast.success(`${count} oportunidades geradas a partir do padrão!`);
+      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+    },
+    onError: (err: any) => {
+      setGeneratingPatternId(null);
+      toast.error(err.message || "Erro ao gerar oportunidades");
+    },
+  });
+
   const sorted = [...patterns].sort((a, b) =>
     sortBy === "occurrences"
       ? b.total_occurrences - a.total_occurrences
