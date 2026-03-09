@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap, Search, Loader2, Network, Play, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap, Search, Loader2, Network, Play, CheckCircle2, Clock, AlertCircle, Square } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { StatCard } from "@/components/StatCard";
 import { chartData } from "@/lib/mockData";
