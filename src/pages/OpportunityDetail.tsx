@@ -344,7 +344,7 @@ export default function OpportunityDetail() {
 
               {/* Monetization */}
               <div className="px-6 py-5">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><DollarSign className="h-4 w-4 text-success" /> Monetization Strategy</h3>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><DollarSign className="h-4 w-4 text-success" /> Estratégia de Monetização</h3>
                 <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{mvpPlan.monetization}</div>
               </div>
             </div>
