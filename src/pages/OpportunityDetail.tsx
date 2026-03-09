@@ -168,8 +168,8 @@ export default function OpportunityDetail() {
       {/* Problem & Solution */}
       <div className="grid md:grid-cols-2 gap-4">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Zap className="h-4 w-4 text-destructive" /> Problem Description</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">{opp.problem || "No description available."}</p>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Zap className="h-4 w-4 text-destructive" /> Descrição do Problema</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">{opp.problem || "Sem descrição disponível."}</p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-xl border border-border bg-card p-5">
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Proposed SaaS Solution</h3>
