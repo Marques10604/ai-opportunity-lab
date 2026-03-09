@@ -85,7 +85,7 @@ export default function OpportunityDetail() {
       setMvpPlan(data);
     } catch (err: any) {
       console.error("MVP generation error:", err);
-      toast.error(err?.message || "Failed to generate MVP plan");
+      toast.error(err?.message || "Falha ao gerar plano MVP");
     }
     setGenerating(false);
   };
