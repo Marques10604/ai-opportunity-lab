@@ -164,107 +164,96 @@ export default function Problems() {
         </div>
       </div>
 
-      {/* Problems Table */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-xl border border-border bg-card overflow-hidden"
-      >
-        {isLoading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">Carregando problemas...</div>
-        ) : !problems?.length ? (
-          <div className="p-8 text-center">
-            <AlertCircle className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">Nenhum problema detectado ainda.</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Execute o Pain Hunter no Painel para detectar problemas.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-secondary/30">
-                  <th className="text-left p-4 font-medium text-muted-foreground">
-                    <div className="flex items-center gap-2"><AlertCircle className="h-4 w-4" />Título</div>
-                  </th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">Descrição</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">
-                    <div className="flex items-center gap-2"><Globe className="h-4 w-4" />Plataforma</div>
-                  </th>
-                  <th className="text-center p-4 font-medium text-muted-foreground">
-                    <div className="flex items-center justify-center gap-2"><TrendingUp className="h-4 w-4" />Freq.</div>
-                  </th>
-                  <th className="text-center p-4 font-medium text-muted-foreground">
-                    <div className="flex items-center justify-center gap-2"><Zap className="h-4 w-4" />Urg.</div>
-                  </th>
-                  <th className="text-center p-4 font-medium text-muted-foreground">
-                    <div className="flex items-center justify-center gap-2"><Flame className="h-4 w-4" />Viral</div>
-                  </th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">
-                    <div className="flex items-center gap-2"><Calendar className="h-4 w-4" />Data</div>
-                  </th>
-                  <th className="text-center p-4 font-medium text-muted-foreground">Ação</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {problems.map((problem) => (
-                  <tr key={problem.id} className="hover:bg-secondary/30 transition-colors">
-                    <td className="p-4 font-medium">{problem.problem_title}</td>
-                    <td className="p-4 text-muted-foreground max-w-xs">
-                      <p className="line-clamp-2">{problem.problem_description || "-"}</p>
-                    </td>
-                    <td className="p-4">
-                      <span className="inline-flex items-center px-2 py-1 rounded-md bg-secondary text-xs font-medium">
-                        {problem.source_platform || "-"}
+      {/* Problems Cards */}
+      {isLoading ? (
+        <div className="p-8 text-center text-sm text-muted-foreground">Carregando problemas...</div>
+      ) : !problems?.length ? (
+        <div className="rounded-xl border border-border bg-card p-12 text-center">
+          <AlertCircle className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">Nenhum problema detectado ainda.</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">Execute o Pain Hunter no Painel para detectar problemas.</p>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {problems.map((problem, i) => (
+            <motion.div
+              key={problem.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03 }}
+              className="rounded-xl border border-border bg-card p-5 space-y-4 hover:border-primary/30 transition-colors"
+            >
+              {/* Title */}
+              <div>
+                <h3 className="text-sm font-bold leading-snug">{problem.problem_title}</h3>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-[10px] text-muted-foreground">
+                    Fonte: <span className="font-medium text-foreground">{problem.source_platform || "—"}</span>
+                  </span>
+                  {problem.nichos && (
+                    <>
+                      <span className="text-muted-foreground/30">|</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Indústria: <span className="font-medium text-foreground">{problem.nichos}</span>
                       </span>
-                    </td>
-                    <td className="p-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-16 h-2 rounded-full bg-secondary overflow-hidden">
-                          <div className="h-full bg-primary rounded-full" style={{ width: `${problem.frequency_score ?? 0}%` }} />
-                        </div>
-                        <span className="text-xs font-mono text-muted-foreground w-8">{problem.frequency_score ?? 0}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <div className="w-16 h-2 rounded-full bg-secondary overflow-hidden">
-                          <div className="h-full bg-destructive rounded-full" style={{ width: `${problem.urgency_score ?? 0}%` }} />
-                        </div>
-                        <span className="text-xs font-mono text-muted-foreground w-8">{problem.urgency_score ?? 0}</span>
-                      </div>
-                    </td>
-                    <td className="p-4 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-destructive/10 text-destructive text-xs font-bold">
-                        <Flame className="h-3 w-3" />
-                        {problem.viral_score ?? 0}
-                      </span>
-                    </td>
-                    <td className="p-4 text-muted-foreground text-xs font-mono">
-                      {problem.created_at
-                        ? format(new Date(problem.created_at), "dd MMM yyyy, HH:mm", { locale: ptBR })
-                        : "-"}
-                    </td>
-                    <td className="p-4 text-center">
-                      <button
-                        onClick={() => generateContentIdea(problem.id, problem.problem_title, problem.problem_description)}
-                        disabled={generatingId === problem.id}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors disabled:opacity-50"
-                      >
-                        {generatingId === problem.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Lightbulb className="h-3 w-3" />
-                        )}
-                        Gerar Conteúdo
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </motion.div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Description */}
+              {problem.problem_description && (
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium mb-1">Problema</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{problem.problem_description}</p>
+                </div>
+              )}
+
+              {/* Scores */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary">
+                  <TrendingUp className="h-3 w-3 text-primary" />
+                  <span className="text-[10px] text-muted-foreground">Freq:</span>
+                  <span className="text-[10px] font-bold font-mono">{problem.frequency_score ?? 0}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary">
+                  <Zap className="h-3 w-3 text-destructive" />
+                  <span className="text-[10px] text-muted-foreground">Urg:</span>
+                  <span className="text-[10px] font-bold font-mono">{problem.urgency_score ?? 0}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-destructive/10">
+                  <Flame className="h-3 w-3 text-destructive" />
+                  <span className="text-[10px] text-muted-foreground">Viral:</span>
+                  <span className="text-[10px] font-bold font-mono text-destructive">{problem.viral_score ?? 0}</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 pt-1 border-t border-border">
+                <button
+                  onClick={() => generateContentIdea(problem.id, problem.problem_title, problem.problem_description)}
+                  disabled={generatingId === problem.id}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {generatingId === problem.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Lightbulb className="h-3.5 w-3.5" />
+                  )}
+                  Gerar Conteúdo
+                </button>
+                <button
+                  onClick={() => navigate(`/problems/${problem.id}`)}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-medium hover:bg-secondary transition-colors"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Ver Detalhes
+                </button>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
       {/* Content Idea Modal */}
       <AnimatePresence>
