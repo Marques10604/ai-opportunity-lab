@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useOpportunities } from "@/hooks/useSupabaseData";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Lightbulb, Network } from "lucide-react";
+import { ArrowRight, Lightbulb, Network, Filter } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 const competitionLabel = (level: string | null) => {
   if (level === "Low") return "Baixa";
@@ -14,10 +16,13 @@ const competitionLabel = (level: string | null) => {
   return level ?? "-";
 };
 
+type FilterType = "all" | "from_pattern" | "manual";
+
 export default function Opportunities() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: opportunities, isLoading } = useOpportunities();
+  const [filter, setFilter] = useState<FilterType>("all");
 
   const { data: patterns = [] } = useQuery({
     queryKey: ["patterns_map", user?.id],
@@ -33,6 +38,14 @@ export default function Opportunities() {
 
   const patternMap = new Map(patterns.map((p) => [p.id, p.pattern_title]));
 
+  const filtered = (opportunities || []).filter((opp: any) => {
+    if (filter === "from_pattern") return !!opp.source_pattern_id;
+    if (filter === "manual") return !opp.source_pattern_id;
+    return true;
+  });
+
+  const patternCount = (opportunities || []).filter((o: any) => !!o.source_pattern_id).length;
+
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
@@ -40,11 +53,26 @@ export default function Opportunities() {
         <p className="text-sm text-muted-foreground mt-1">Oportunidades SaaS geradas por IA, classificadas por potencial</p>
       </div>
 
+      <div className="flex gap-2 items-center">
+        <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+        <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")} className="h-7 text-xs">
+          Todas ({opportunities?.length || 0})
+        </Button>
+        <Button variant={filter === "from_pattern" ? "default" : "outline"} size="sm" onClick={() => setFilter("from_pattern")} className="h-7 text-xs gap-1">
+          <Network className="h-3 w-3" /> De Padrões ({patternCount})
+        </Button>
+        <Button variant={filter === "manual" ? "default" : "outline"} size="sm" onClick={() => setFilter("manual")} className="h-7 text-xs">
+          Pipeline ({(opportunities?.length || 0) - patternCount})
+        </Button>
+      </div>
+
       {isLoading ? (
         <div className="text-sm text-muted-foreground">Carregando...</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-sm text-muted-foreground py-12 text-center">Nenhuma oportunidade encontrada para este filtro.</div>
       ) : (
         <div className="space-y-3">
-          {opportunities?.map((opp: any, i: number) => {
+          {filtered.map((opp: any, i: number) => {
             const patternName = opp.source_pattern_id ? patternMap.get(opp.source_pattern_id) : null;
             return (
               <motion.button
