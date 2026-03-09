@@ -133,7 +133,7 @@ export default function OpportunityDetail() {
   return (
     <div className="space-y-6 max-w-5xl">
       <button onClick={() => navigate("/opportunities")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Opportunities
+        <ArrowLeft className="h-4 w-4" /> Voltar para Oportunidades
       </button>
 
       {/* Header */}
