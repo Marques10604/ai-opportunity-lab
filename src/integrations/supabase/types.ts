@@ -223,6 +223,39 @@ export type Database = {
         }
         Relationships: []
       }
+      problem_patterns: {
+        Row: {
+          average_viral_score: number | null
+          created_at: string
+          id: string
+          pattern_description: string | null
+          pattern_title: string
+          related_problems: Json | null
+          total_occurrences: number | null
+          user_id: string
+        }
+        Insert: {
+          average_viral_score?: number | null
+          created_at?: string
+          id?: string
+          pattern_description?: string | null
+          pattern_title: string
+          related_problems?: Json | null
+          total_occurrences?: number | null
+          user_id: string
+        }
+        Update: {
+          average_viral_score?: number | null
+          created_at?: string
+          id?: string
+          pattern_description?: string | null
+          pattern_title?: string
+          related_problems?: Json | null
+          total_occurrences?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
