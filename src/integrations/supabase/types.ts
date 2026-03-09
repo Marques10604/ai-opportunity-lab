@@ -74,6 +74,39 @@ export type Database = {
         }
         Relationships: []
       }
+      detected_problems: {
+        Row: {
+          created_at: string
+          frequency_score: number | null
+          id: string
+          problem_description: string | null
+          problem_title: string
+          source_platform: string | null
+          urgency_score: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          frequency_score?: number | null
+          id?: string
+          problem_description?: string | null
+          problem_title: string
+          source_platform?: string | null
+          urgency_score?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          frequency_score?: number | null
+          id?: string
+          problem_description?: string | null
+          problem_title?: string
+          source_platform?: string | null
+          urgency_score?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       mvp_plans: {
         Row: {
           core_features: Json
