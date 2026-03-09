@@ -225,9 +225,25 @@ export default function Patterns() {
                     </div>
                   </div>
                 )}
-                <p className="text-[10px] text-muted-foreground/50">
-                  {new Date(pattern.created_at).toLocaleDateString("pt-BR")}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-muted-foreground/50">
+                    {new Date(pattern.created_at).toLocaleDateString("pt-BR")}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    disabled={generatingPatternId === pattern.id}
+                    onClick={() => generateFromPatternMutation.mutate(pattern)}
+                  >
+                    {generatingPatternId === pattern.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Lightbulb className="h-3 w-3" />
+                    )}
+                    Gerar Oportunidades
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
