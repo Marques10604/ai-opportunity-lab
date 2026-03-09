@@ -127,11 +127,19 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, [pipelineRunning, pipelineStep, stepStartTime]);
 
+  const cancelPipeline = () => {
+    abortController?.abort();
+    setAbortController(null);
+  };
+
   const runFullPipeline = async () => {
     if (!user) return;
+    const controller = new AbortController();
+    setAbortController(controller);
     setPipelineRunning(true);
     setPipelineLogs([]);
     const totalStart = Date.now();
+    const signal = controller.signal;
 
     try {
       // Step 1: Pain Hunter
