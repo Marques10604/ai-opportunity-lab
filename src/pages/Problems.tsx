@@ -47,6 +47,7 @@ const sortOptions: { value: SortOption; label: string }[] = [
 ];
 
 export default function Problems() {
+  const navigate = useNavigate();
   const [sortBy, setSortBy] = useState<SortOption>("viral_score");
   const { data: problems, isLoading } = useDetectedProblems(sortBy);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
