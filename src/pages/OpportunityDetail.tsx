@@ -56,9 +56,9 @@ export default function OpportunityDetail() {
   const ms = opp.market_score ?? 0;
   const radialData = [{ name: "Score", value: ms, fill: getScoreColor(ms) }];
   const analysisData = [
-    { name: "Market", value: ms, color: "hsl(190, 90%, 50%)" },
-    { name: "Competition", value: compToNum(opp.competition_level), color: opp.competition_level === "Low" ? "hsl(150,60%,50%)" : opp.competition_level === "High" ? "hsl(0,72%,51%)" : "hsl(40,90%,55%)" },
-    { name: "Difficulty", value: diffToNum(opp.difficulty_level), color: opp.difficulty_level === "Low" ? "hsl(150,60%,50%)" : opp.difficulty_level === "High" ? "hsl(0,72%,51%)" : "hsl(40,90%,55%)" },
+    { name: "Mercado", value: ms, color: "hsl(190, 90%, 50%)" },
+    { name: "Concorrência", value: compToNum(opp.competition_level), color: opp.competition_level === "Low" ? "hsl(150,60%,50%)" : opp.competition_level === "High" ? "hsl(0,72%,51%)" : "hsl(40,90%,55%)" },
+    { name: "Dificuldade", value: diffToNum(opp.difficulty_level), color: opp.difficulty_level === "Low" ? "hsl(150,60%,50%)" : opp.difficulty_level === "High" ? "hsl(0,72%,51%)" : "hsl(40,90%,55%)" },
   ];
   const growthData = [
     { month: "Now", value: 20 }, { month: "+3mo", value: 35 },

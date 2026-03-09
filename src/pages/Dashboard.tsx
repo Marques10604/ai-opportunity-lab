@@ -116,7 +116,7 @@ export default function Dashboard() {
             className="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors disabled:opacity-50"
           >
             {painHunterLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            Executar Pain Hunter
+            Executar Caçador de Problemas
           </button>
           <button
             onClick={() => setDiscoveryOpen(true)}
