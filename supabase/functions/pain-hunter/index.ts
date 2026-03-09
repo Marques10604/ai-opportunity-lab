@@ -6,33 +6,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const sampleProblems = [
-  {
-    problem_title: "Gerenciar clientes com planilhas",
-    problem_description:
-      "Muitos freelancers reclamam que gerenciar clientes manualmente em planilhas é caótico e propenso a erros.",
-    source_platform: "Reddit",
-    frequency_score: 70,
-    urgency_score: 60,
-  },
-  {
-    problem_title: "Apps de produtividade demais",
-    problem_description:
-      "Usuários reclamam de precisar de muitas ferramentas diferentes para gerenciar tarefas, notas e projetos.",
-    source_platform: "Quora",
-    frequency_score: 60,
-    urgency_score: 50,
-  },
-  {
-    problem_title: "Copiar dados manualmente entre ferramentas",
-    problem_description:
-      "Pessoas reclamam de copiar dados manualmente entre diferentes ferramentas e dashboards.",
-    source_platform: "Indie Hackers",
-    frequency_score: 80,
-    urgency_score: 70,
-  },
-];
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -64,34 +37,142 @@ Deno.serve(async (req) => {
 
     const userId = claimsData.claims.sub;
 
-    const body = await req.json().catch(() => ({}));
-    const testMode = body.test_mode === true;
-
-    // Use sample problems in test mode, otherwise use provided problems
-    const problems = testMode ? sampleProblems : body.problems;
-
-    if (!Array.isArray(problems) || problems.length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Campo 'problems' deve ser um array não vazio ou ative test_mode: true" }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+    // Call Lovable AI to generate problems
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const rows = problems.map((p: any) => ({
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a market research analyst that identifies real user pain points from online communities. Always respond by calling the provided tool.",
+          },
+          {
+            role: "user",
+            content:
+              "Generate 10 realistic, specific user problems people complain about online. Topics: software, productivity, automation, digital tools, online work, content creation. Each problem must feel like a real complaint found on Reddit, Quora, YouTube, Twitter, or Indie Hackers. Be specific and varied — no generic problems. Use Portuguese (Brazil) for all text fields.",
+          },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "return_problems",
+              description: "Return a list of detected user problems.",
+              parameters: {
+                type: "object",
+                properties: {
+                  problems: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        problem_title: { type: "string", description: "Short title of the problem" },
+                        problem_description: {
+                          type: "string",
+                          description: "Detailed description of the user complaint",
+                        },
+                        source_platform: {
+                          type: "string",
+                          enum: ["Reddit", "Quora", "YouTube", "Twitter", "Indie Hackers"],
+                        },
+                        frequency_score: {
+                          type: "integer",
+                          description: "How frequently this problem is mentioned (1-10)",
+                        },
+                        urgency_score: {
+                          type: "integer",
+                          description: "How urgently users need a solution (1-10)",
+                        },
+                      },
+                      required: [
+                        "problem_title",
+                        "problem_description",
+                        "source_platform",
+                        "frequency_score",
+                        "urgency_score",
+                      ],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["problems"],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "return_problems" } },
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errText = await aiResponse.text();
+      console.error("AI gateway error:", aiResponse.status, errText);
+      if (aiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em instantes." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (aiResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ error: "Erro ao gerar problemas com IA" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const aiData = await aiResponse.json();
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+
+    if (!toolCall?.function?.arguments) {
+      console.error("No tool call in AI response:", JSON.stringify(aiData));
+      return new Response(JSON.stringify({ error: "IA não retornou dados estruturados" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const parsed = JSON.parse(toolCall.function.arguments);
+    const problems: any[] = parsed.problems || [];
+
+    if (problems.length === 0) {
+      return new Response(JSON.stringify({ error: "Nenhum problema foi gerado" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const rows = problems.map((p) => ({
       user_id: userId,
-      problem_title: p.problem_title?.trim() || "Sem título",
+      problem_title: (p.problem_title || "Sem título").trim(),
       problem_description: p.problem_description?.trim() ?? null,
       source_platform: p.source_platform?.trim() ?? null,
       frequency_score:
         typeof p.frequency_score === "number"
-          ? Math.min(100, Math.max(0, p.frequency_score))
+          ? Math.min(100, Math.max(0, p.frequency_score * 10))
           : 0,
       urgency_score:
         typeof p.urgency_score === "number"
-          ? Math.min(100, Math.max(0, p.urgency_score))
+          ? Math.min(100, Math.max(0, p.urgency_score * 10))
           : 0,
     }));
 
@@ -111,7 +192,6 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        test_mode: testMode,
         inserted: data.length,
         problems: data,
       }),
