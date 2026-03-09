@@ -35,6 +35,7 @@ const navItems = [
   { title: "Problemas", url: "/problems", icon: AlertCircle },
   { title: "Padrões", url: "/patterns", icon: Network },
   { title: "Oportunidades", url: "/opportunities", icon: Lightbulb },
+  { title: "Conteúdos Gerados", url: "/contents", icon: MessageSquare },
   { title: "Planos Salvos", url: "/saved-plans", icon: FileText },
 ];
 

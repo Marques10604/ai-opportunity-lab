@@ -100,3 +100,19 @@ export function useAgentLogs() {
     refetchInterval: 5000, // poll every 5s for near-realtime
   });
 }
+
+export function useContentOpportunities() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["content_opportunities", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("content_opportunities")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+}
