@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap } from "lucide-react";
+import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap, Search, Loader2 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { StatCard } from "@/components/StatCard";
 import { chartData } from "@/lib/mockData";
 import { useNavigate } from "react-router-dom";
 import { useOpportunities, useTrends, useNiches, useAgentLogs } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
 import { seedUserData } from "@/lib/seedData";
 import { DiscoveryEngine } from "@/components/DiscoveryEngine";
 import { TrendsList } from "@/components/TrendsList";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const competitionLabel = (level: string | null) => {
   if (level === "Low") return "Baixa";
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
+  const [painHunterLoading, setPainHunterLoading] = useState(false);
   const { data: opportunities, isLoading: oppLoading } = useOpportunities();
   const { data: trends } = useTrends();
   const { data: niches } = useNiches();
@@ -31,6 +33,22 @@ export default function Dashboard() {
   useEffect(() => {
     if (user) seedUserData(user.id);
   }, [user]);
+
+  const runPainHunter = async () => {
+    setPainHunterLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("pain-hunter", {
+        body: { test_mode: true },
+      });
+      if (error) throw error;
+      toast.success("Pain Hunter concluído. Problemas armazenados no banco de dados.");
+    } catch (err: any) {
+      console.error("Erro ao executar Pain Hunter:", err);
+      toast.error(err?.message || "Erro ao executar Pain Hunter");
+    } finally {
+      setPainHunterLoading(false);
+    }
+  };
 
   const topScore = opportunities?.length ? Math.max(...opportunities.map(o => o.market_score ?? 0)) : 0;
 
@@ -41,12 +59,22 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
           <p className="text-sm text-muted-foreground mt-1">Visão em tempo real da descoberta de oportunidades com IA</p>
         </div>
-        <button
-          onClick={() => setDiscoveryOpen(true)}
-          className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity glow-primary"
-        >
-          <Zap className="h-4 w-4" /> Descobrir Oportunidades
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={runPainHunter}
+            disabled={painHunterLoading}
+            className="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors disabled:opacity-50"
+          >
+            {painHunterLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            Executar Pain Hunter
+          </button>
+          <button
+            onClick={() => setDiscoveryOpen(true)}
+            className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity glow-primary"
+          >
+            <Zap className="h-4 w-4" /> Descobrir Oportunidades
+          </button>
+        </div>
       </div>
 
       <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); navigate("/opportunities"); }} />
