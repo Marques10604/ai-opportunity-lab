@@ -267,40 +267,87 @@ export default function Dashboard() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="rounded-xl border border-primary/30 bg-primary/5 p-4 overflow-hidden"
+            className="rounded-xl border border-primary/30 bg-card overflow-hidden"
           >
-            <p className="text-xs font-semibold text-primary mb-3">Pipeline em execução...</p>
-            <div className="flex items-center gap-2">
-              {[
-                { step: 1, label: "Caçador de Problemas" },
-                { step: 2, label: "Detector de Padrões" },
-                { step: 3, label: "Gerador de Oportunidades" },
-              ].map((s) => (
-                <div key={s.step} className="flex items-center gap-2">
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    pipelineStep > s.step
-                      ? "bg-success/10 text-success"
-                      : pipelineStep === s.step
-                      ? "bg-primary/20 text-primary"
-                      : "bg-secondary text-muted-foreground"
-                  }`}>
-                    {pipelineStep > s.step ? (
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                    ) : pipelineStep === s.step ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0" />
-                    )}
-                    {s.label}
+            {/* Steps header */}
+            <div className="p-4 bg-primary/5 border-b border-primary/20">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-primary">Pipeline em execução...</p>
+                {pipelineStep > 0 && pipelineStep < 4 && (
+                  <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
+                    <Clock className="h-3 w-3" /> Etapa atual: {stepElapsed}s
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {[
+                  { step: 1, label: "Caçador de Problemas", est: "~15-25s" },
+                  { step: 2, label: "Detector de Padrões", est: "~10-20s" },
+                  { step: 3, label: "Gerador de Oportunidades", est: "~20-40s" },
+                ].map((s) => (
+                  <div key={s.step} className="flex items-center gap-2">
+                    <div className={`flex flex-col items-start px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      pipelineStep > s.step
+                        ? "bg-success/10 text-success"
+                        : pipelineStep === s.step
+                        ? "bg-primary/20 text-primary"
+                        : "bg-secondary text-muted-foreground"
+                    }`}>
+                      <div className="flex items-center gap-1.5">
+                        {pipelineStep > s.step ? (
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        ) : pipelineStep === s.step ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0" />
+                        )}
+                        {s.label}
+                      </div>
+                      <span className="text-[9px] font-mono opacity-60 ml-5">{s.est}</span>
+                    </div>
+                    {s.step < 3 && <span className="text-muted-foreground/30">→</span>}
                   </div>
-                  {s.step < 3 && <span className="text-muted-foreground/30">→</span>}
-                </div>
-              ))}
-              {pipelineStep === 4 && (
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 text-success text-xs font-medium ml-2">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Concluído!
-                </motion.div>
-              )}
+                ))}
+                {pipelineStep === 4 && (
+                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 text-success text-xs font-medium ml-2">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Concluído!
+                  </motion.div>
+                )}
+              </div>
+            </div>
+
+            {/* Live log feed */}
+            <div className="p-3 max-h-[220px] overflow-y-auto bg-background/50">
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <div className="h-2 w-2 rounded-full bg-destructive" />
+                <div className="h-2 w-2 rounded-full bg-warning" />
+                <div className="h-2 w-2 rounded-full bg-success" />
+                <span className="text-[9px] font-mono text-muted-foreground ml-1">pipeline.log</span>
+                {pipelineStep > 0 && pipelineStep < 4 && (
+                  <span className="text-[9px] text-primary animate-pulse ml-auto">● AO VIVO</span>
+                )}
+              </div>
+              <div className="space-y-1 font-mono text-[11px]">
+                <AnimatePresence initial={false}>
+                  {pipelineLogs.map((log, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex gap-2 px-1 py-0.5 rounded ${
+                        log.level === "success" ? "text-success" : log.level === "warn" ? "text-destructive" : "text-foreground/70"
+                      }`}
+                    >
+                      <span className="text-muted-foreground/40 shrink-0 w-16">{log.time}</span>
+                      <span className="shrink-0">{log.icon}</span>
+                      <span>{log.text}</span>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                {pipelineLogs.length === 0 && (
+                  <p className="text-muted-foreground/40 px-1">Aguardando início...</p>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
