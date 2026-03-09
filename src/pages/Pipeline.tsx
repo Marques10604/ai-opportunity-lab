@@ -12,6 +12,16 @@ const agentIcons: Record<string, React.ElementType> = {
   "Market Predictor": BarChart3,
 };
 
+const agentLabels: Record<string, string> = {
+  "Pain Hunter": "Caçador de Problemas",
+  "Trend Detector": "Detector de Tendências",
+  "Tool Hunter": "Caçador de Ferramentas",
+  "Niche Detector": "Detector de Nichos",
+  "SaaS Generator": "Gerador de SaaS",
+  "Saturation Filter": "Filtro de Saturação",
+  "Market Predictor": "Preditor de Mercado",
+};
+
 const statusLabel = (status: string | null) => {
   if (status === "active") return "ativo";
   if (status === "processing") return "processando";
