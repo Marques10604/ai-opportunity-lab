@@ -7,6 +7,7 @@ import {
   LogOut,
   FileText,
   TrendingUp,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NavLink } from "@/components/NavLink";
@@ -29,6 +30,7 @@ const navItems = [
   { title: "Pipeline", url: "/pipeline", icon: GitBranch },
   { title: "Monitor de Agentes", url: "/agents", icon: Cpu },
   { title: "Tendências", url: "/trends", icon: TrendingUp },
+  { title: "Problemas", url: "/problems", icon: AlertCircle },
   { title: "Oportunidades", url: "/opportunities", icon: Lightbulb },
   { title: "Planos Salvos", url: "/saved-plans", icon: FileText },
 ];
