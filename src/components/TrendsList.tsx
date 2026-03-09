@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const SOURCE_ICONS: Record<string, string> = {
   "Google Trends": "🔍",
@@ -40,9 +41,9 @@ export function TrendsList() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       queryClient.invalidateQueries({ queryKey: ["trends"] });
-      toast.success(data?.message || "Trends ingested successfully");
+      toast.success(data?.message || "Tendências importadas com sucesso");
     } catch (err: any) {
-      toast.error(err?.message || "Failed to ingest trends");
+      toast.error(err?.message || "Falha ao importar tendências");
     }
     setIngesting(false);
   };
@@ -57,9 +58,9 @@ export function TrendsList() {
       <div className="p-5 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">Detected Trends</h3>
+          <h3 className="text-sm font-semibold">Tendências Detectadas</h3>
           <span className="text-[10px] text-muted-foreground font-mono ml-1">
-            {trends?.length ?? 0} total
+            {trends?.length ?? 0} no total
           </span>
         </div>
         <button
@@ -72,17 +73,17 @@ export function TrendsList() {
           ) : (
             <RefreshCw className="h-3 w-3" />
           )}
-          {ingesting ? "Scanning..." : "Scan Now"}
+          {ingesting ? "Escaneando..." : "Escanear Agora"}
         </button>
       </div>
 
       {isLoading ? (
-        <div className="p-8 text-center text-sm text-muted-foreground">Loading trends...</div>
+        <div className="p-8 text-center text-sm text-muted-foreground">Carregando tendências...</div>
       ) : !trends?.length ? (
         <div className="p-8 text-center">
           <Zap className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">No trends detected yet</p>
-          <p className="text-[11px] text-muted-foreground/60 mt-1">Click "Scan Now" to fetch from data sources</p>
+          <p className="text-sm text-muted-foreground">Nenhuma tendência detectada ainda</p>
+          <p className="text-[11px] text-muted-foreground/60 mt-1">Clique em "Escanear Agora" para buscar nas fontes de dados</p>
         </div>
       ) : (
         <div className="divide-y divide-border max-h-[400px] overflow-y-auto">
@@ -94,12 +95,10 @@ export function TrendsList() {
               transition={{ delay: i * 0.03 }}
               className="flex items-center gap-3 p-3.5 hover:bg-secondary/30 transition-colors"
             >
-              {/* Source icon */}
               <span className="text-base shrink-0" title={trend.source ?? ""}>
                 {SOURCE_ICONS[trend.source ?? ""] || "📊"}
               </span>
 
-              {/* Content */}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium truncate">{trend.name}</p>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -110,26 +109,24 @@ export function TrendsList() {
                     {trend.source}
                   </span>
                   <span className="text-[10px] text-muted-foreground/40">
-                    {format(new Date(trend.detected_at), "MMM d, HH:mm")}
+                    {format(new Date(trend.detected_at), "dd/MM, HH:mm", { locale: ptBR })}
                   </span>
                 </div>
               </div>
 
-              {/* Growth score */}
               <div className={`shrink-0 px-2 py-1 rounded-md ${scoreBg(trend.growth_score ?? 0)} text-center`}>
                 <p className={`text-sm font-bold ${scoreColor(trend.growth_score ?? 0)}`}>
                   {trend.growth_score}
                 </p>
-                <p className="text-[8px] text-muted-foreground uppercase tracking-wider">growth</p>
+                <p className="text-[8px] text-muted-foreground uppercase tracking-wider">cresc.</p>
               </div>
             </motion.div>
           ))}
         </div>
       )}
 
-      {/* Data sources footer */}
       <div className="p-3 border-t border-border bg-secondary/20">
-        <p className="text-[10px] text-muted-foreground/50 mb-1.5">Connected data sources:</p>
+        <p className="text-[10px] text-muted-foreground/50 mb-1.5">Fontes de dados conectadas:</p>
         <div className="flex flex-wrap gap-1.5">
           {Object.entries(SOURCE_ICONS).map(([name, icon]) => (
             <span

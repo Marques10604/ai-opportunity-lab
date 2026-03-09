@@ -34,12 +34,11 @@ export function DiscoveryEngine({ open, onClose }: { open: boolean; onClose: () 
       setStepStatuses({ ...statuses });
     }
 
-    // Call AI to generate opportunities
     try {
       const { data: funcData, error: funcError } = await supabase.functions.invoke("generate-opportunities", {
         body: {
-          niches: ["Developer Tools", "EdTech", "Healthcare", "Creator Economy", "E-commerce"],
-          trends: ["AI automation", "Remote work tools", "No-code platforms", "API-first products"],
+          niches: ["Ferramentas para Dev", "EdTech", "Saúde", "Economia Criativa", "E-commerce"],
+          trends: ["Automação com IA", "Ferramentas para trabalho remoto", "Plataformas no-code", "Produtos API-first"],
           tools: ["Notion", "Slack", "Figma", "Zapier", "Stripe", "Linear", "Vercel"],
         },
       });
@@ -48,7 +47,7 @@ export function DiscoveryEngine({ open, onClose }: { open: boolean; onClose: () 
       if (funcData?.error) throw new Error(funcData.error);
 
       const opportunities = funcData.opportunities || [];
-      if (opportunities.length === 0) throw new Error("No opportunities generated");
+      if (opportunities.length === 0) throw new Error("Nenhuma oportunidade foi gerada");
 
       const { error: insertError } = await supabase.from("opportunities").insert(
         opportunities.map((o: any) => ({ ...o, user_id: user.id }))
@@ -59,8 +58,8 @@ export function DiscoveryEngine({ open, onClose }: { open: boolean; onClose: () 
       setGeneratedCount(opportunities.length);
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     } catch (err: any) {
-      console.error("Discovery error:", err);
-      toast.error(err?.message || "Failed to generate opportunities");
+      console.error("Erro de descoberta:", err);
+      toast.error(err?.message || "Falha ao gerar oportunidades");
     }
 
     setRunning(false);
@@ -93,15 +92,14 @@ export function DiscoveryEngine({ open, onClose }: { open: boolean; onClose: () 
           onClick={(e) => e.stopPropagation()}
           className="w-full max-w-lg rounded-xl border border-border bg-card shadow-2xl overflow-hidden"
         >
-          {/* Header */}
           <div className="flex items-center justify-between p-5 border-b border-border">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-lg bg-primary/20 flex items-center justify-center glow-primary">
                 <Zap className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <h2 className="text-sm font-semibold">Discover Opportunities</h2>
-                <p className="text-[10px] text-muted-foreground">AI-powered opportunity pipeline</p>
+                <h2 className="text-sm font-semibold">Descobrir Oportunidades</h2>
+                <p className="text-[10px] text-muted-foreground">Pipeline de oportunidades com IA</p>
               </div>
             </div>
             {!running && (
@@ -111,7 +109,6 @@ export function DiscoveryEngine({ open, onClose }: { open: boolean; onClose: () 
             )}
           </div>
 
-          {/* Pipeline Steps */}
           <div className="p-5 space-y-2.5 max-h-[400px] overflow-y-auto">
             {pipelineSteps.map((step, i) => {
               const status = stepStatuses[step.id] || "pending";
@@ -145,13 +142,12 @@ export function DiscoveryEngine({ open, onClose }: { open: boolean; onClose: () 
                     <p className="text-[10px] text-muted-foreground/60 font-mono">{step.agent}</p>
                   </div>
                   {status === "running" && (
-                    <span className="text-[9px] font-mono text-primary/60 animate-pulse-glow">PROCESSING</span>
+                    <span className="text-[9px] font-mono text-primary/60 animate-pulse-glow">PROCESSANDO</span>
                   )}
                 </motion.div>
               );
             })}
 
-            {/* Results */}
             {finished && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -159,31 +155,30 @@ export function DiscoveryEngine({ open, onClose }: { open: boolean; onClose: () 
                 className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-center mt-4"
               >
                 <Sparkles className="h-6 w-6 text-primary mx-auto mb-2" />
-                <p className="text-sm font-semibold">{generatedCount} new opportunities discovered!</p>
-                <p className="text-[11px] text-muted-foreground mt-1">Results saved to your workspace</p>
+                <p className="text-sm font-semibold">{generatedCount} novas oportunidades descobertas!</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Resultados salvos na sua área</p>
               </motion.div>
             )}
           </div>
 
-          {/* Footer */}
           <div className="p-5 border-t border-border">
             {!running && !finished && (
               <button
                 onClick={runPipeline}
                 className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity glow-primary"
               >
-                <Zap className="h-4 w-4" /> Start Discovery Pipeline
+                <Zap className="h-4 w-4" /> Iniciar Pipeline de Descoberta
               </button>
             )}
             {running && (
-              <p className="text-center text-xs text-muted-foreground">Pipeline running... please wait</p>
+              <p className="text-center text-xs text-muted-foreground">Pipeline em execução... aguarde</p>
             )}
             {finished && (
               <button
                 onClick={handleClose}
                 className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
               >
-                View Opportunities
+                Ver Oportunidades
               </button>
             )}
           </div>

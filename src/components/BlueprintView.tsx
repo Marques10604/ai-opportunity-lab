@@ -1,7 +1,7 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FileCode2, ListChecks, LayoutGrid, Database, Globe, Cpu,
-  Download, CheckCircle2, AlertCircle, Info,
+  Download, CheckCircle2,
 } from "lucide-react";
 
 export type Blueprint = {
@@ -24,9 +24,9 @@ export type Blueprint = {
 };
 
 const PRIORITY_STYLES: Record<string, { bg: string; text: string; label: string }> = {
-  P0: { bg: "bg-destructive/10", text: "text-destructive", label: "Must Have" },
-  P1: { bg: "bg-warning/10", text: "text-warning", label: "Important" },
-  P2: { bg: "bg-muted/50", text: "text-muted-foreground", label: "Nice to Have" },
+  P0: { bg: "bg-destructive/10", text: "text-destructive", label: "Essencial" },
+  P1: { bg: "bg-warning/10", text: "text-warning", label: "Importante" },
+  P2: { bg: "bg-muted/50", text: "text-muted-foreground", label: "Opcional" },
 };
 
 const METHOD_STYLES: Record<string, string> = {
@@ -40,7 +40,7 @@ const METHOD_STYLES: Record<string, string> = {
 function SectionHeader({ icon: Icon, title, color }: { icon: any; title: string; color: string }) {
   return (
     <div className="flex items-center gap-2 mb-4">
-      <div className={`h-7 w-7 rounded-md flex items-center justify-center bg-card border border-border`}>
+      <div className="h-7 w-7 rounded-md flex items-center justify-center bg-card border border-border">
         <Icon className={`h-3.5 w-3.5 ${color}`} />
       </div>
       <h3 className="text-sm font-semibold">{title}</h3>
@@ -51,46 +51,46 @@ function SectionHeader({ icon: Icon, title, color }: { icon: any; title: string;
 function exportAsMarkdown(blueprint: Blueprint, title: string): string {
   const lines: string[] = [];
 
-  lines.push(`# MVP Blueprint: ${title}`);
-  lines.push(`_Generated ${new Date().toLocaleDateString()}_\n`);
+  lines.push(`# Blueprint MVP: ${title}`);
+  lines.push(`_Gerado em ${new Date().toLocaleDateString("pt-BR")}_\n`);
 
-  lines.push(`## Product Specification`);
+  lines.push("## Especificação do Produto");
   lines.push(blueprint.product_spec + "\n");
 
-  lines.push(`## Core Features`);
+  lines.push("## Funcionalidades Principais");
   for (const f of blueprint.core_features) {
     lines.push(`### [${f.priority}] ${f.name}`);
     lines.push(f.description + "\n");
   }
 
-  lines.push(`## UI Structure`);
+  lines.push("## Estrutura de UI");
   for (const p of blueprint.ui_structure) {
     lines.push(`### ${p.page}`);
     lines.push(`_${p.purpose}_`);
-    lines.push(`**Components:** ${p.components.join(", ")}\n`);
+    lines.push(`**Componentes:** ${p.components.join(", ")}\n`);
   }
 
-  lines.push(`## Database Schema`);
+  lines.push("## Esquema do Banco de Dados");
   for (const t of blueprint.database_schema) {
-    lines.push(`### Table: \`${t.table_name}\``);
+    lines.push(`### Tabela: \`${t.table_name}\``);
     lines.push(`_${t.purpose}_`);
-    lines.push(`| Column | Type | Nullable |`);
-    lines.push(`|--------|------|----------|`);
+    lines.push("| Coluna | Tipo | Nulo |" );
+    lines.push("|--------|------|------|" );
     for (const c of t.columns) {
-      lines.push(`| ${c.name} | ${c.type} | ${c.nullable ? "Yes" : "No"} |`);
+      lines.push(`| ${c.name} | ${c.type} | ${c.nullable ? "Sim" : "Não"} |`);
     }
     lines.push("");
   }
 
-  lines.push(`## API Endpoints`);
+  lines.push("## Endpoints da API");
   for (const e of blueprint.api_endpoints) {
     lines.push(`### \`${e.method} ${e.path}\``);
     lines.push(e.description);
-    lines.push(`- **Request:** ${e.request_body}`);
-    lines.push(`- **Response:** ${e.response}\n`);
+    lines.push(`- **Requisição:** ${e.request_body}`);
+    lines.push(`- **Resposta:** ${e.response}\n`);
   }
 
-  lines.push(`## Architecture Notes`);
+  lines.push("## Notas de Arquitetura");
   for (const note of blueprint.architecture_notes) {
     lines.push(`- ${note}`);
   }
@@ -112,35 +112,31 @@ export function BlueprintView({ blueprint, opportunityTitle }: { blueprint: Blue
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-0 rounded-xl border border-primary/20 bg-card overflow-hidden">
-
-      {/* Blueprint Header */}
       <div className="bg-primary/5 border-b border-primary/20 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
             <FileCode2 className="h-4.5 w-4.5 text-primary" />
           </div>
           <div>
-            <h2 className="text-base font-bold">Development Blueprint</h2>
-            <p className="text-[11px] text-muted-foreground font-mono">{opportunityTitle} · Generated {new Date().toLocaleDateString()}</p>
+            <h2 className="text-base font-bold">Blueprint de Desenvolvimento</h2>
+            <p className="text-[11px] text-muted-foreground font-mono">{opportunityTitle} · Gerado em {new Date().toLocaleDateString("pt-BR")}</p>
           </div>
         </div>
         <button
           onClick={handleExport}
           className="h-9 px-4 rounded-lg border border-border bg-secondary text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors"
         >
-          <Download className="h-3.5 w-3.5" /> Export .md
+          <Download className="h-3.5 w-3.5" /> Exportar .md
         </button>
       </div>
 
-      {/* Product Spec */}
       <div className="px-6 py-5 border-b border-border">
-        <SectionHeader icon={FileCode2} title="Product Specification" color="text-primary" />
+        <SectionHeader icon={FileCode2} title="Especificação do Produto" color="text-primary" />
         <p className="text-sm text-muted-foreground leading-relaxed">{blueprint.product_spec}</p>
       </div>
 
-      {/* Core Features */}
       <div className="px-6 py-5 border-b border-border">
-        <SectionHeader icon={ListChecks} title="Core Features" color="text-primary" />
+        <SectionHeader icon={ListChecks} title="Funcionalidades Principais" color="text-primary" />
         <div className="grid md:grid-cols-2 gap-2.5">
           {blueprint.core_features.map((f, i) => {
             const ps = PRIORITY_STYLES[f.priority] || PRIORITY_STYLES.P2;
@@ -168,9 +164,8 @@ export function BlueprintView({ blueprint, opportunityTitle }: { blueprint: Blue
         </div>
       </div>
 
-      {/* UI Structure */}
       <div className="px-6 py-5 border-b border-border">
-        <SectionHeader icon={LayoutGrid} title="UI Structure" color="text-info" />
+        <SectionHeader icon={LayoutGrid} title="Estrutura de UI" color="text-info" />
         <div className="grid md:grid-cols-2 gap-3">
           {blueprint.ui_structure.map((screen, i) => (
             <motion.div
@@ -194,9 +189,8 @@ export function BlueprintView({ blueprint, opportunityTitle }: { blueprint: Blue
         </div>
       </div>
 
-      {/* Database Schema */}
       <div className="px-6 py-5 border-b border-border">
-        <SectionHeader icon={Database} title="Database Schema" color="text-warning" />
+        <SectionHeader icon={Database} title="Esquema do Banco de Dados" color="text-warning" />
         <div className="space-y-4">
           {blueprint.database_schema.map((table, ti) => (
             <motion.div
@@ -214,9 +208,9 @@ export function BlueprintView({ blueprint, opportunityTitle }: { blueprint: Blue
               <table className="w-full text-[11px]">
                 <thead>
                   <tr className="border-b border-border bg-secondary/20">
-                    <th className="text-left px-3 py-1.5 text-muted-foreground font-medium">Column</th>
-                    <th className="text-left px-3 py-1.5 text-muted-foreground font-medium">Type</th>
-                    <th className="text-left px-3 py-1.5 text-muted-foreground font-medium">Nullable</th>
+                    <th className="text-left px-3 py-1.5 text-muted-foreground font-medium">Coluna</th>
+                    <th className="text-left px-3 py-1.5 text-muted-foreground font-medium">Tipo</th>
+                    <th className="text-left px-3 py-1.5 text-muted-foreground font-medium">Nulo</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -226,8 +220,8 @@ export function BlueprintView({ blueprint, opportunityTitle }: { blueprint: Blue
                       <td className="px-3 py-1.5 font-mono text-accent">{col.type}</td>
                       <td className="px-3 py-1.5">
                         {col.nullable
-                          ? <span className="text-muted-foreground/60">nullable</span>
-                          : <span className="text-success font-medium">NOT NULL</span>}
+                          ? <span className="text-muted-foreground/60">nulo</span>
+                          : <span className="text-success font-medium">NÃO NULO</span>}
                       </td>
                     </tr>
                   ))}
@@ -238,9 +232,8 @@ export function BlueprintView({ blueprint, opportunityTitle }: { blueprint: Blue
         </div>
       </div>
 
-      {/* API Endpoints */}
       <div className="px-6 py-5 border-b border-border">
-        <SectionHeader icon={Globe} title="API Endpoints" color="text-accent" />
+        <SectionHeader icon={Globe} title="Endpoints da API" color="text-accent" />
         <div className="space-y-2">
           {blueprint.api_endpoints.map((ep, i) => (
             <motion.div
@@ -266,9 +259,8 @@ export function BlueprintView({ blueprint, opportunityTitle }: { blueprint: Blue
         </div>
       </div>
 
-      {/* Architecture Notes */}
       <div className="px-6 py-5">
-        <SectionHeader icon={Cpu} title="Architecture Notes" color="text-success" />
+        <SectionHeader icon={Cpu} title="Notas de Arquitetura" color="text-success" />
         <div className="space-y-2">
           {blueprint.architecture_notes.map((note, i) => (
             <motion.div
