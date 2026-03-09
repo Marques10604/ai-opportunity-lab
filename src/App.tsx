@@ -13,6 +13,7 @@ import OpportunityDetail from "@/pages/OpportunityDetail";
 import Auth from "@/pages/Auth";
 import SavedPlans from "@/pages/SavedPlans";
 import Trends from "@/pages/Trends";
+import Problems from "@/pages/Problems";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
