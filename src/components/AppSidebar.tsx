@@ -9,6 +9,7 @@ import {
   TrendingUp,
   AlertCircle,
   Network,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NavLink } from "@/components/NavLink";
