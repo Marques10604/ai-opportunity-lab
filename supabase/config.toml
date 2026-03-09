@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.generate-content-idea]
 verify_jwt = false
+
+[functions.daily-pain-discovery]
+verify_jwt = false
