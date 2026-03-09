@@ -15,7 +15,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground">
                 <div className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-glow" />
-                LIVE
+                AO VIVO
               </div>
               <button className="h-8 w-8 rounded-md flex items-center justify-center hover:bg-secondary transition-colors relative">
                 <Bell className="h-4 w-4 text-muted-foreground" />
