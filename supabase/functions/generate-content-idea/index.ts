@@ -45,7 +45,7 @@ serve(async (req) => {
           },
           {
             role: "user",
-            content: `Generate a social media content idea based on this user problem:\n\nTitle: ${problem_title}\nDescription: ${problem_description || "N/A"}\n\nThe content should address this pain point and attract an audience that has this problem.`,
+            content: `Generate a social media content idea AND a short video script based on this user problem:\n\nTitle: ${problem_title}\nDescription: ${problem_description || "N/A"}\n\nThe content should address this pain point and attract an audience that has this problem. The video_script must follow the structure: Hook (first 3 seconds to grab attention), Problem (explain the pain briefly), Insight (quick solution or tip), CTA (call to action). Format each section clearly with labels.`,
           },
         ],
         tools: [
@@ -53,7 +53,7 @@ serve(async (req) => {
             type: "function",
             function: {
               name: "return_content_idea",
-              description: "Return a structured social media content idea.",
+              description: "Return a structured social media content idea with video script.",
               parameters: {
                 type: "object",
                 properties: {
@@ -70,12 +70,32 @@ serve(async (req) => {
                     enum: ["vídeo curto", "carrossel", "thread"],
                     description: "Format of the content",
                   },
-                  short_script: {
-                    type: "string",
-                    description: "A short script or outline for the content (3-5 bullet points or short paragraphs)",
+                  video_script: {
+                    type: "object",
+                    description: "Structured video script for short-form content",
+                    properties: {
+                      hook: {
+                        type: "string",
+                        description: "First 3 seconds hook to stop scrolling",
+                      },
+                      problem: {
+                        type: "string",
+                        description: "Brief explanation of the problem/pain point",
+                      },
+                      insight: {
+                        type: "string",
+                        description: "Quick solution, tip, or insight",
+                      },
+                      cta: {
+                        type: "string",
+                        description: "Call to action for the viewer",
+                      },
+                    },
+                    required: ["hook", "problem", "insight", "cta"],
+                    additionalProperties: false,
                   },
                 },
-                required: ["content_title", "content_hook", "content_type", "short_script"],
+                required: ["content_title", "content_hook", "content_type", "video_script"],
                 additionalProperties: false,
               },
             },

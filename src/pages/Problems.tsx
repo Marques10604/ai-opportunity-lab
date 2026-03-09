@@ -7,11 +7,18 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
+interface VideoScript {
+  hook: string;
+  problem: string;
+  insight: string;
+  cta: string;
+}
+
 interface ContentIdea {
   content_title: string;
   content_hook: string;
   content_type: string;
-  short_script: string;
+  video_script: VideoScript;
 }
 
 type SortOption = "viral_score" | "urgency_score" | "frequency_score";
@@ -291,15 +298,49 @@ export default function Problems() {
                 </div>
 
                 <div className="rounded-lg border border-border bg-secondary/30 p-4">
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-1.5">Hook</p>
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-1.5">Hook de Abertura</p>
                   <p className="text-sm italic text-foreground">"{contentIdea.content_hook}"</p>
                 </div>
 
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60 mb-1.5">Roteiro</p>
-                  <div className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
-                    {contentIdea.short_script}
+                {/* Video Script Section */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Film className="h-4 w-4 text-primary" />
+                    <p className="text-sm font-semibold">Roteiro para Vídeo Curto</p>
                   </div>
+                  
+                  <div className="space-y-2">
+                    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+                      <p className="text-[10px] uppercase tracking-widest text-destructive font-bold mb-1">🎯 Hook (3s)</p>
+                      <p className="text-sm text-foreground">{contentIdea.video_script?.hook}</p>
+                    </div>
+
+                    <div className="rounded-lg border border-border bg-secondary/30 p-3">
+                      <p className="text-[10px] uppercase tracking-widest text-muted-foreground/80 font-bold mb-1">😩 Problema</p>
+                      <p className="text-sm text-foreground">{contentIdea.video_script?.problem}</p>
+                    </div>
+
+                    <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+                      <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">💡 Insight</p>
+                      <p className="text-sm text-foreground">{contentIdea.video_script?.insight}</p>
+                    </div>
+
+                    <div className="rounded-lg border border-success/30 bg-success/5 p-3">
+                      <p className="text-[10px] uppercase tracking-widest text-success font-bold mb-1">📣 CTA</p>
+                      <p className="text-sm text-foreground">{contentIdea.video_script?.cta}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const script = `🎯 HOOK:\n${contentIdea.video_script?.hook}\n\n😩 PROBLEMA:\n${contentIdea.video_script?.problem}\n\n💡 INSIGHT:\n${contentIdea.video_script?.insight}\n\n📣 CTA:\n${contentIdea.video_script?.cta}`;
+                      navigator.clipboard.writeText(script);
+                      toast.success("Roteiro copiado!");
+                    }}
+                    className="w-full h-9 rounded-lg bg-secondary text-secondary-foreground text-xs font-medium flex items-center justify-center gap-2 hover:bg-secondary/80 transition-colors"
+                  >
+                    📋 Copiar Roteiro
+                  </button>
                 </div>
               </div>
 
