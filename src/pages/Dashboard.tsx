@@ -91,10 +91,10 @@ export default function Dashboard() {
         body: { test_mode: true },
       });
       if (error) throw error;
-      toast.success("Pain Hunter concluído. Problemas armazenados no banco de dados.");
+      toast.success("Caçador de Problemas executado. Problemas armazenados com sucesso.");
     } catch (err: any) {
-      console.error("Erro ao executar Pain Hunter:", err);
-      toast.error(err?.message || "Erro ao executar Pain Hunter");
+      console.error("Erro ao executar Caçador de Problemas:", err);
+      toast.error(err?.message || "Erro ao executar Caçador de Problemas");
     } finally {
       setPainHunterLoading(false);
     }
@@ -116,7 +116,7 @@ export default function Dashboard() {
             className="h-9 px-4 rounded-lg bg-secondary text-secondary-foreground text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors disabled:opacity-50"
           >
             {painHunterLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-            Executar Pain Hunter
+            Executar Caçador de Problemas
           </button>
           <button
             onClick={() => setDiscoveryOpen(true)}

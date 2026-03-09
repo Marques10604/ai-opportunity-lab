@@ -50,15 +50,15 @@ export default function OpportunityDetail() {
 
   const opp = opportunities?.find((o) => o.id === id);
 
-  if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Loading...</div>;
-  if (!opp) return <div className="p-8 text-sm text-muted-foreground">Opportunity not found.</div>;
+  if (isLoading) return <div className="p-8 text-sm text-muted-foreground">Carregando...</div>;
+  if (!opp) return <div className="p-8 text-sm text-muted-foreground">Oportunidade não encontrada.</div>;
 
   const ms = opp.market_score ?? 0;
   const radialData = [{ name: "Score", value: ms, fill: getScoreColor(ms) }];
   const analysisData = [
-    { name: "Market", value: ms, color: "hsl(190, 90%, 50%)" },
-    { name: "Competition", value: compToNum(opp.competition_level), color: opp.competition_level === "Low" ? "hsl(150,60%,50%)" : opp.competition_level === "High" ? "hsl(0,72%,51%)" : "hsl(40,90%,55%)" },
-    { name: "Difficulty", value: diffToNum(opp.difficulty_level), color: opp.difficulty_level === "Low" ? "hsl(150,60%,50%)" : opp.difficulty_level === "High" ? "hsl(0,72%,51%)" : "hsl(40,90%,55%)" },
+    { name: "Mercado", value: ms, color: "hsl(190, 90%, 50%)" },
+    { name: "Concorrência", value: compToNum(opp.competition_level), color: opp.competition_level === "Low" ? "hsl(150,60%,50%)" : opp.competition_level === "High" ? "hsl(0,72%,51%)" : "hsl(40,90%,55%)" },
+    { name: "Dificuldade", value: diffToNum(opp.difficulty_level), color: opp.difficulty_level === "Low" ? "hsl(150,60%,50%)" : opp.difficulty_level === "High" ? "hsl(0,72%,51%)" : "hsl(40,90%,55%)" },
   ];
   const growthData = [
     { month: "Now", value: 20 }, { month: "+3mo", value: 35 },
@@ -85,7 +85,7 @@ export default function OpportunityDetail() {
       setMvpPlan(data);
     } catch (err: any) {
       console.error("MVP generation error:", err);
-      toast.error(err?.message || "Failed to generate MVP plan");
+      toast.error(err?.message || "Falha ao gerar plano MVP");
     }
     setGenerating(false);
   };
@@ -125,7 +125,7 @@ export default function OpportunityDetail() {
       setBlueprint(data);
     } catch (err: any) {
       console.error("Blueprint generation error:", err);
-      toast.error(err?.message || "Failed to generate blueprint");
+      toast.error(err?.message || "Falha ao gerar blueprint");
     }
     setGeneratingBlueprint(false);
   };
@@ -133,7 +133,7 @@ export default function OpportunityDetail() {
   return (
     <div className="space-y-6 max-w-5xl">
       <button onClick={() => navigate("/opportunities")} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="h-4 w-4" /> Back to Opportunities
+        <ArrowLeft className="h-4 w-4" /> Voltar para Oportunidades
       </button>
 
       {/* Header */}
@@ -145,7 +145,7 @@ export default function OpportunityDetail() {
           </div>
           <div className="text-right shrink-0">
             <p className="text-4xl font-bold gradient-text">{ms}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Opportunity Score</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pontuação</p>
           </div>
         </div>
       </motion.div>
@@ -153,9 +153,9 @@ export default function OpportunityDetail() {
       {/* Score Cards */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Market Potential", value: `${ms}/100`, icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
-          { label: "Competition", value: opp.competition_level ?? "Medium", icon: Shield, color: levelColor(opp.competition_level), bg: levelBg(opp.competition_level) },
-          { label: "Build Difficulty", value: opp.difficulty_level ?? "Medium", icon: Gauge, color: levelColor(opp.difficulty_level), bg: levelBg(opp.difficulty_level) },
+          { label: "Potencial de Mercado", value: `${ms}/100`, icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
+          { label: "Concorrência", value: opp.competition_level ?? "Medium", icon: Shield, color: levelColor(opp.competition_level), bg: levelBg(opp.competition_level) },
+          { label: "Dificuldade", value: opp.difficulty_level ?? "Medium", icon: Gauge, color: levelColor(opp.difficulty_level), bg: levelBg(opp.difficulty_level) },
         ].map((item, i) => (
           <motion.div key={item.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="rounded-xl border border-border bg-card p-4">
             <div className={`h-8 w-8 rounded-lg ${item.bg} flex items-center justify-center mb-3`}><item.icon className={`h-4 w-4 ${item.color}`} /></div>
@@ -168,30 +168,30 @@ export default function OpportunityDetail() {
       {/* Problem & Solution */}
       <div className="grid md:grid-cols-2 gap-4">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Zap className="h-4 w-4 text-destructive" /> Problem Description</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">{opp.problem || "No description available."}</p>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Zap className="h-4 w-4 text-destructive" /> Descrição do Problema</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">{opp.problem || "Sem descrição disponível."}</p>
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Proposed SaaS Solution</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed">{opp.solution || "No description available."}</p>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Layers className="h-4 w-4 text-primary" /> Solução SaaS Proposta</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed">{opp.solution || "Sem descrição disponível."}</p>
         </motion.div>
       </div>
 
       {/* Charts */}
       <div className="grid md:grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold mb-2">Opportunity Score</h3>
+          <h3 className="text-sm font-semibold mb-2">Pontuação da Oportunidade</h3>
           <ResponsiveContainer width="100%" height={160}>
             <RadialBarChart cx="50%" cy="50%" innerRadius="60%" outerRadius="90%" startAngle={180} endAngle={0} data={radialData} barSize={12}>
               <RadialBar dataKey="value" cornerRadius={6} background={{ fill: "hsl(220,14%,18%)" }} />
             </RadialBarChart>
           </ResponsiveContainer>
           <p className="text-center text-2xl font-bold -mt-4" style={{ color: getScoreColor(ms) }}>{ms}</p>
-          <p className="text-center text-[10px] text-muted-foreground">out of 100</p>
+          <p className="text-center text-[10px] text-muted-foreground">de 100</p>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }} className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold mb-2">Analysis Breakdown</h3>
+          <h3 className="text-sm font-semibold mb-2">Análise Detalhada</h3>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={analysisData} layout="vertical" margin={{ left: 0, right: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,14%,18%)" horizontal={false} />
@@ -206,7 +206,7 @@ export default function OpportunityDetail() {
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold mb-2">Market Growth Projection</h3>
+          <h3 className="text-sm font-semibold mb-2">Projeção de Crescimento</h3>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={growthData} margin={{ left: -10, right: 5 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(220,14%,18%)" />
@@ -229,7 +229,7 @@ export default function OpportunityDetail() {
           disabled={generating}
           className="rounded-xl p-4 font-semibold text-sm flex items-center justify-center gap-2 bg-primary text-primary-foreground hover:opacity-90 transition-opacity glow-primary disabled:opacity-60"
         >
-          {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating MVP Plan...</> : <><Rocket className="h-4 w-4" /> {mvpPlan ? "Regenerate MVP Plan" : "Generate MVP Plan"}</>}
+          {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Gerando Plano MVP...</> : <><Rocket className="h-4 w-4" /> {mvpPlan ? "Regerar Plano MVP" : "Gerar Plano MVP"}</>}
         </motion.button>
 
         <motion.button
@@ -240,7 +240,7 @@ export default function OpportunityDetail() {
           disabled={generatingBlueprint}
           className="rounded-xl p-4 font-semibold text-sm flex items-center justify-center gap-2 bg-accent text-accent-foreground hover:opacity-90 transition-opacity disabled:opacity-60"
         >
-          {generatingBlueprint ? <><Loader2 className="h-4 w-4 animate-spin" /> Building Blueprint...</> : <><Wrench className="h-4 w-4" /> {blueprint ? "Rebuild MVP Blueprint" : "Build MVP"}</>}
+          {generatingBlueprint ? <><Loader2 className="h-4 w-4 animate-spin" /> Gerando Blueprint...</> : <><Wrench className="h-4 w-4" /> {blueprint ? "Regerar Blueprint MVP" : "Construir MVP"}</>}
         </motion.button>
       </div>
 
@@ -254,8 +254,8 @@ export default function OpportunityDetail() {
                 <div className="flex items-center gap-3">
                   <FileText className="h-5 w-5 text-primary" />
                   <div>
-                    <h2 className="text-lg font-bold">MVP Plan: {opp.title}</h2>
-                    <p className="text-[11px] text-muted-foreground font-mono">Generated {new Date().toLocaleDateString()}</p>
+                    <h2 className="text-lg font-bold">Plano MVP: {opp.title}</h2>
+                    <p className="text-[11px] text-muted-foreground font-mono">Gerado em {new Date().toLocaleDateString("pt-BR")}</p>
                   </div>
                 </div>
                 <button
@@ -265,21 +265,21 @@ export default function OpportunityDetail() {
                     saved ? "bg-success/10 text-success border border-success/30" : "bg-primary text-primary-foreground hover:opacity-90"
                   } disabled:opacity-60`}
                 >
-                  {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving...</>
-                    : saved ? <><CheckCircle2 className="h-3.5 w-3.5" /> Saved</>
-                    : <><Save className="h-3.5 w-3.5" /> Save Plan</>}
+                  {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Salvando...</>
+                    : saved ? <><CheckCircle2 className="h-3.5 w-3.5" /> Salvo</>
+                    : <><Save className="h-3.5 w-3.5" /> Salvar Plano</>}
                 </button>
               </div>
 
               {/* Product Concept */}
               <div className="px-6 py-5 border-b border-border">
-                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /> Product Concept</h3>
+                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /> Conceito do Produto</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{mvpPlan.product_concept}</p>
               </div>
 
               {/* Core Features */}
               <div className="px-6 py-5 border-b border-border">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" /> Core Features</h3>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><ListChecks className="h-4 w-4 text-primary" /> Funcionalidades Principais</h3>
                 <div className="grid md:grid-cols-2 gap-3">
                   {mvpPlan.core_features.map((f, i) => (
                     <motion.div key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="flex gap-3 rounded-lg border border-border bg-secondary/30 p-3">
@@ -295,7 +295,7 @@ export default function OpportunityDetail() {
 
               {/* Tech Stack */}
               <div className="px-6 py-5 border-b border-border">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Code2 className="h-4 w-4 text-accent" /> Recommended Tech Stack</h3>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Code2 className="h-4 w-4 text-accent" /> Stack Tecnológica Recomendada</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                   {mvpPlan.tech_stack.map((t) => (
                     <div key={t.name} className="rounded-lg border border-border bg-secondary/30 p-3">
@@ -308,7 +308,7 @@ export default function OpportunityDetail() {
 
               {/* UI Structure */}
               <div className="px-6 py-5 border-b border-border">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-info" /> Suggested UI Structure</h3>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-info" /> Estrutura de Interface Sugerida</h3>
                 <div className="space-y-2">
                   {mvpPlan.ui_structure.map((page, i) => (
                     <div key={i} className="flex items-start gap-3 text-sm">
@@ -321,7 +321,7 @@ export default function OpportunityDetail() {
 
               {/* Roadmap */}
               <div className="px-6 py-5 border-b border-border">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Map className="h-4 w-4 text-warning" /> Development Roadmap</h3>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Map className="h-4 w-4 text-warning" /> Roadmap de Desenvolvimento</h3>
                 <div className="space-y-4">
                   {mvpPlan.roadmap.map((phase, pi) => (
                     <motion.div key={pi} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: pi * 0.08 }}>
@@ -344,7 +344,7 @@ export default function OpportunityDetail() {
 
               {/* Monetization */}
               <div className="px-6 py-5">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><DollarSign className="h-4 w-4 text-success" /> Monetization Strategy</h3>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><DollarSign className="h-4 w-4 text-success" /> Estratégia de Monetização</h3>
                 <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">{mvpPlan.monetization}</div>
               </div>
             </div>
@@ -352,7 +352,7 @@ export default function OpportunityDetail() {
             {/* Save reminder */}
             {!saved && (
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                <Save className="h-3 w-3" /> Don't forget to save your plan
+                <Save className="h-3 w-3" /> Não esqueça de salvar seu plano
               </div>
             )}
           </motion.div>

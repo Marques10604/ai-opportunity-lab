@@ -12,13 +12,13 @@ import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const PIPELINE_AGENTS = [
-  { name: "Pain Hunter", icon: Search, color: "text-destructive", bg: "bg-destructive/10" },
-  { name: "Trend Detector", icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
-  { name: "Tool Hunter", icon: Wrench, color: "text-warning", bg: "bg-warning/10" },
-  { name: "Niche Detector", icon: Target, color: "text-accent", bg: "bg-accent/10" },
-  { name: "SaaS Generator", icon: Sparkles, color: "text-info", bg: "bg-info/10" },
-  { name: "Saturation Filter", icon: Filter, color: "text-warning", bg: "bg-warning/10" },
-  { name: "Market Predictor", icon: BarChart3, color: "text-success", bg: "bg-success/10" },
+  { name: "Pain Hunter", label: "Caçador de Problemas", icon: Search, color: "text-destructive", bg: "bg-destructive/10" },
+  { name: "Trend Detector", label: "Detector de Tendências", icon: TrendingUp, color: "text-primary", bg: "bg-primary/10" },
+  { name: "Tool Hunter", label: "Caçador de Ferramentas", icon: Wrench, color: "text-warning", bg: "bg-warning/10" },
+  { name: "Niche Detector", label: "Detector de Nichos", icon: Target, color: "text-accent", bg: "bg-accent/10" },
+  { name: "SaaS Generator", label: "Gerador de SaaS", icon: Sparkles, color: "text-info", bg: "bg-info/10" },
+  { name: "Saturation Filter", label: "Filtro de Saturação", icon: Filter, color: "text-warning", bg: "bg-warning/10" },
+  { name: "Market Predictor", label: "Preditor de Mercado", icon: BarChart3, color: "text-success", bg: "bg-success/10" },
 ];
 
 const levelColors: Record<string, string> = {
@@ -130,7 +130,7 @@ export default function AgentMonitor() {
                   <div className={`h-7 w-7 rounded-md ${agent.bg} flex items-center justify-center mb-2`}>
                     <agent.icon className={`h-3.5 w-3.5 ${agent.color}`} />
                   </div>
-                  <p className="text-[11px] font-medium truncate">{agent.name}</p>
+                  <p className="text-[11px] font-medium truncate">{agent.label}</p>
                   <div className="flex items-center gap-1.5 mt-1">
                     <span className={`h-1.5 w-1.5 rounded-full ${
                       status === "processing" ? "bg-warning animate-pulse" : status === "active" ? "bg-success" : "bg-muted-foreground/30"
@@ -169,7 +169,7 @@ export default function AgentMonitor() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-xs font-medium">{agent.agent_name}</p>
+                      <p className="text-xs font-medium">{pAgent?.label || agent.agent_name}</p>
                       <span className={`h-1.5 w-1.5 rounded-full ${
                         agent.status === "active" ? "bg-success" : agent.status === "processing" ? "bg-warning animate-pulse" : "bg-muted-foreground/40"
                       }`} />
