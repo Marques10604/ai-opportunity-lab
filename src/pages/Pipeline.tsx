@@ -98,7 +98,7 @@ export default function Pipeline() {
                         <Icon className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <h3 className="text-sm font-semibold">{agent.agent_name}</h3>
+                        <h3 className="text-sm font-semibold">{agentLabels[agent.agent_name] || agent.agent_name}</h3>
                         <div className="flex items-center gap-1.5 mt-0.5">
                           <span className={`h-1.5 w-1.5 rounded-full ${
                             agent.status === "active" ? "bg-success" : agent.status === "processing" ? "bg-warning animate-pulse-glow" : "bg-muted-foreground/40"
