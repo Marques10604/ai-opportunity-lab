@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, Calendar, Crown, Globe, Lightbulb, Loader2, TrendingUp, X, Zap, Film, LayoutGrid, MessageSquare } from "lucide-react";
+import { AlertCircle, Calendar, Crown, Flame, Globe, Lightbulb, Loader2, TrendingUp, X, Zap, Film, LayoutGrid, MessageSquare, ArrowUpDown } from "lucide-react";
 import { useDetectedProblems } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -14,14 +14,23 @@ interface ContentIdea {
   short_script: string;
 }
 
+type SortOption = "viral_score" | "urgency_score" | "frequency_score";
+
 const contentTypeIcon = (type: string) => {
   if (type.includes("vídeo") || type.includes("video")) return <Film className="h-4 w-4" />;
   if (type.includes("carrossel") || type.includes("carousel")) return <LayoutGrid className="h-4 w-4" />;
   return <MessageSquare className="h-4 w-4" />;
 };
 
+const sortOptions: { value: SortOption; label: string }[] = [
+  { value: "viral_score", label: "Viral Score" },
+  { value: "urgency_score", label: "Urgência" },
+  { value: "frequency_score", label: "Frequência" },
+];
+
 export default function Problems() {
-  const { data: problems, isLoading } = useDetectedProblems();
+  const [sortBy, setSortBy] = useState<SortOption>("viral_score");
+  const { data: problems, isLoading } = useDetectedProblems(sortBy);
   const [generatingId, setGeneratingId] = useState<string | null>(null);
   const [contentIdea, setContentIdea] = useState<ContentIdea | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -29,7 +38,7 @@ export default function Problems() {
   const topProblems = useMemo(() => {
     if (!problems?.length) return [];
     return [...problems]
-      .sort((a, b) => ((b.frequency_score ?? 0) + (b.urgency_score ?? 0)) - ((a.frequency_score ?? 0) + (a.urgency_score ?? 0)))
+      .sort((a, b) => ((b.viral_score ?? 0)) - ((a.viral_score ?? 0)))
       .slice(0, 5);
   }, [problems]);
 
@@ -69,53 +78,72 @@ export default function Problems() {
           <div className="flex items-center gap-2">
             <Crown className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Top Problemas</h2>
-            <span className="text-xs text-muted-foreground ml-1">por score combinado (frequência + urgência)</span>
+            <span className="text-xs text-muted-foreground ml-1">por viral score</span>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {topProblems.map((p, i) => {
-              const combined = (p.frequency_score ?? 0) + (p.urgency_score ?? 0);
-              return (
-                <motion.div
-                  key={p.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="rounded-xl border border-border bg-card p-4 space-y-3 relative overflow-hidden"
-                >
-                  <div className="absolute top-0 right-0 px-2 py-1 rounded-bl-lg bg-primary/10 text-primary text-[10px] font-bold font-mono">
-                    #{i + 1} · {combined}
-                  </div>
-                  <h3 className="text-sm font-semibold pr-14 leading-snug">{p.problem_title}</h3>
-                  <p className="text-xs text-muted-foreground line-clamp-3">{p.problem_description || "-"}</p>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary text-[10px] font-medium">
-                    {p.source_platform || "-"}
-                  </span>
-                  <div className="flex gap-4 pt-1">
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                        <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" />Freq.</span>
-                        <span className="font-mono">{p.frequency_score ?? 0}</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                        <div className="h-full bg-primary rounded-full" style={{ width: `${p.frequency_score ?? 0}%` }} />
-                      </div>
+            {topProblems.map((p, i) => (
+              <motion.div
+                key={p.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="rounded-xl border border-border bg-card p-4 space-y-3 relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 px-2 py-1 rounded-bl-lg bg-destructive/20 text-destructive text-[10px] font-bold font-mono flex items-center gap-1">
+                  <Flame className="h-3 w-3" />
+                  {p.viral_score ?? 0}
+                </div>
+                <h3 className="text-sm font-semibold pr-14 leading-snug">{p.problem_title}</h3>
+                <p className="text-xs text-muted-foreground line-clamp-3">{p.problem_description || "-"}</p>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary text-[10px] font-medium">
+                  {p.source_platform || "-"}
+                </span>
+                <div className="flex gap-4 pt-1">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" />Freq.</span>
+                      <span className="font-mono">{p.frequency_score ?? 0}</span>
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                        <span className="flex items-center gap-1"><Zap className="h-3 w-3" />Urg.</span>
-                        <span className="font-mono">{p.urgency_score ?? 0}</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
-                        <div className="h-full bg-destructive rounded-full" style={{ width: `${p.urgency_score ?? 0}%` }} />
-                      </div>
+                    <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div className="h-full bg-primary rounded-full" style={{ width: `${p.frequency_score ?? 0}%` }} />
                     </div>
                   </div>
-                </motion.div>
-              );
-            })}
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><Zap className="h-3 w-3" />Urg.</span>
+                      <span className="font-mono">{p.urgency_score ?? 0}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div className="h-full bg-destructive rounded-full" style={{ width: `${p.urgency_score ?? 0}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       )}
+
+      {/* Sorting Controls */}
+      <div className="flex items-center gap-3">
+        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Ordenar por:</span>
+        <div className="flex gap-2">
+          {sortOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setSortBy(opt.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                sortBy === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Problems Table */}
       <motion.div
@@ -144,10 +172,13 @@ export default function Problems() {
                     <div className="flex items-center gap-2"><Globe className="h-4 w-4" />Plataforma</div>
                   </th>
                   <th className="text-center p-4 font-medium text-muted-foreground">
-                    <div className="flex items-center justify-center gap-2"><TrendingUp className="h-4 w-4" />Frequência</div>
+                    <div className="flex items-center justify-center gap-2"><TrendingUp className="h-4 w-4" />Freq.</div>
                   </th>
                   <th className="text-center p-4 font-medium text-muted-foreground">
-                    <div className="flex items-center justify-center gap-2"><Zap className="h-4 w-4" />Urgência</div>
+                    <div className="flex items-center justify-center gap-2"><Zap className="h-4 w-4" />Urg.</div>
+                  </th>
+                  <th className="text-center p-4 font-medium text-muted-foreground">
+                    <div className="flex items-center justify-center gap-2"><Flame className="h-4 w-4" />Viral</div>
                   </th>
                   <th className="text-left p-4 font-medium text-muted-foreground">
                     <div className="flex items-center gap-2"><Calendar className="h-4 w-4" />Data</div>
@@ -182,6 +213,12 @@ export default function Problems() {
                         </div>
                         <span className="text-xs font-mono text-muted-foreground w-8">{problem.urgency_score ?? 0}</span>
                       </div>
+                    </td>
+                    <td className="p-4 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-destructive/10 text-destructive text-xs font-bold">
+                        <Flame className="h-3 w-3" />
+                        {problem.viral_score ?? 0}
+                      </span>
                     </td>
                     <td className="p-4 text-muted-foreground text-xs font-mono">
                       {problem.created_at
