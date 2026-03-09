@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap } from "lucide-react";
+import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap, Search, Loader2 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { StatCard } from "@/components/StatCard";
 import { chartData } from "@/lib/mockData";
 import { useNavigate } from "react-router-dom";
 import { useOpportunities, useTrends, useNiches, useAgentLogs } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/contexts/AuthContext";
-import { useEffect } from "react";
 import { seedUserData } from "@/lib/seedData";
 import { DiscoveryEngine } from "@/components/DiscoveryEngine";
 import { TrendsList } from "@/components/TrendsList";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const competitionLabel = (level: string | null) => {
   if (level === "Low") return "Baixa";
