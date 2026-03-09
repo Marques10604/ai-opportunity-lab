@@ -7,6 +7,7 @@ import {
   LogOut,
   FileText,
   TrendingUp,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NavLink } from "@/components/NavLink";
