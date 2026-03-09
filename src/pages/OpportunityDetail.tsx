@@ -145,7 +145,7 @@ export default function OpportunityDetail() {
           </div>
           <div className="text-right shrink-0">
             <p className="text-4xl font-bold gradient-text">{ms}</p>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Opportunity Score</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Pontuação</p>
           </div>
         </div>
       </motion.div>
