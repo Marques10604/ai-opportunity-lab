@@ -5,8 +5,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Network, Trash2, TrendingUp, Hash, Sparkles } from "lucide-react";
+import { Loader2, Network, Trash2, TrendingUp, Hash, Sparkles, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface RelatedProblem {
   id: string;
@@ -27,7 +28,9 @@ interface Pattern {
 export default function Patterns() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [sortBy, setSortBy] = useState<"occurrences" | "viral">("occurrences");
+  const [generatingPatternId, setGeneratingPatternId] = useState<string | null>(null);
 
   const { data: patterns = [], isLoading } = useQuery({
     queryKey: ["problem_patterns", user?.id],
@@ -75,6 +78,41 @@ export default function Patterns() {
     onSuccess: () => {
       toast.success("Padrão removido");
       queryClient.invalidateQueries({ queryKey: ["problem_patterns"] });
+    },
+  });
+
+  const generateFromPatternMutation = useMutation({
+    mutationFn: async (pattern: Pattern) => {
+      setGeneratingPatternId(pattern.id);
+      const { data, error } = await supabase.functions.invoke("generate-opportunities", {
+        body: {
+          pattern_context: {
+            pattern_title: pattern.pattern_title,
+            pattern_description: pattern.pattern_description,
+            related_problems: pattern.related_problems,
+          },
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const opportunities = data.opportunities || [];
+      if (opportunities.length === 0) throw new Error("Nenhuma oportunidade gerada");
+
+      const { error: insertError } = await supabase.from("opportunities").insert(
+        opportunities.map((o: any) => ({ ...o, user_id: user!.id }))
+      );
+      if (insertError) throw insertError;
+      return opportunities.length;
+    },
+    onSuccess: (count) => {
+      setGeneratingPatternId(null);
+      toast.success(`${count} oportunidades geradas a partir do padrão!`);
+      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+    },
+    onError: (err: any) => {
+      setGeneratingPatternId(null);
+      toast.error(err.message || "Erro ao gerar oportunidades");
     },
   });
 
@@ -187,9 +225,25 @@ export default function Patterns() {
                     </div>
                   </div>
                 )}
-                <p className="text-[10px] text-muted-foreground/50">
-                  {new Date(pattern.created_at).toLocaleDateString("pt-BR")}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] text-muted-foreground/50">
+                    {new Date(pattern.created_at).toLocaleDateString("pt-BR")}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    disabled={generatingPatternId === pattern.id}
+                    onClick={() => generateFromPatternMutation.mutate(pattern)}
+                  >
+                    {generatingPatternId === pattern.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Lightbulb className="h-3 w-3" />
+                    )}
+                    Gerar Oportunidades
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
