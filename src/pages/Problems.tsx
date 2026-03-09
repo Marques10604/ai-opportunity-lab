@@ -1,11 +1,19 @@
+import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, Calendar, Globe, TrendingUp, Zap } from "lucide-react";
+import { AlertCircle, Calendar, Crown, Globe, TrendingUp, Zap } from "lucide-react";
 import { useDetectedProblems } from "@/hooks/useSupabaseData";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function Problems() {
   const { data: problems, isLoading } = useDetectedProblems();
+
+  const topProblems = useMemo(() => {
+    if (!problems?.length) return [];
+    return [...problems]
+      .sort((a, b) => ((b.frequency_score ?? 0) + (b.urgency_score ?? 0)) - ((a.frequency_score ?? 0) + (a.urgency_score ?? 0)))
+      .slice(0, 5);
+  }, [problems]);
 
   return (
     <div className="space-y-6 max-w-7xl">
