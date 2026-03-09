@@ -62,7 +62,7 @@ export default function Patterns() {
       return data;
     },
     onSuccess: (data) => {
-      toast.success(`${data.patterns?.length || 0} padrões detectados!`);
+      toast.success("Detector de Padrões executado. Padrões agrupados com sucesso.");
       queryClient.invalidateQueries({ queryKey: ["problem_patterns"] });
     },
     onError: (err: any) => {
