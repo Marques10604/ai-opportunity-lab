@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 const PIPELINE_AGENTS = [
   { name: "Pain Hunter", icon: Search, color: "text-destructive", bg: "bg-destructive/10" },
@@ -32,6 +33,13 @@ const levelDots: Record<string, string> = {
   success: "bg-success",
 };
 
+const statusLabel = (status: string | null) => {
+  if (status === "active") return "ativo";
+  if (status === "processing") return "processando";
+  if (status === "idle") return "inativo";
+  return status ?? "-";
+};
+
 export default function AgentMonitor() {
   const { data: agents, isLoading: agentsLoading } = useAgents();
   const { data: logs, isLoading: logsLoading } = useAgentLogs();
@@ -52,14 +60,13 @@ export default function AgentMonitor() {
       queryClient.invalidateQueries({ queryKey: ["agent_logs"] });
       queryClient.invalidateQueries({ queryKey: ["agents"] });
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
-      toast.success(`Pipeline complete — ${data.opportunities_generated} opportunities generated`);
+      toast.success(`Pipeline concluído — ${data.opportunities_generated} oportunidades geradas`);
     } catch (err: any) {
-      toast.error(err?.message || "Pipeline failed");
+      toast.error(err?.message || "Falha no pipeline");
     }
     setRunning(false);
   };
 
-  // Realtime subscription for live logs
   useEffect(() => {
     const channel = supabase
       .channel("agent-logs-realtime")
@@ -74,8 +81,8 @@ export default function AgentMonitor() {
     <div className="space-y-6 max-w-7xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Agent Monitor</h1>
-          <p className="text-sm text-muted-foreground mt-1">AI agent pipeline control & activity feed</p>
+          <h1 className="text-2xl font-bold tracking-tight">Monitor de Agentes</h1>
+          <p className="text-sm text-muted-foreground mt-1">Controle do pipeline de agentes e feed de atividade</p>
         </div>
         <button
           onClick={handleRunPipeline}
@@ -83,17 +90,16 @@ export default function AgentMonitor() {
           className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity glow-primary disabled:opacity-60"
         >
           {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-          {running ? "Running Pipeline..." : "Run Pipeline"}
+          {running ? "Executando Pipeline..." : "Executar Pipeline"}
         </button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Agents Active", value: `${activeAgents}/${totalAgents}`, icon: Activity, color: "text-success", bg: "bg-success/10" },
-          { label: "Total Logs", value: totalLogs, icon: Clock, color: "text-primary", bg: "bg-primary/10" },
-          { label: "Discoveries", value: successLogs, icon: CheckCircle2, color: "text-accent", bg: "bg-accent/10" },
-          { label: "Schedule", value: "Every 4h", icon: Zap, color: "text-warning", bg: "bg-warning/10" },
+          { label: "Agentes Ativos", value: `${activeAgents}/${totalAgents}`, icon: Activity, color: "text-success", bg: "bg-success/10" },
+          { label: "Total de Logs", value: totalLogs, icon: Clock, color: "text-primary", bg: "bg-primary/10" },
+          { label: "Descobertas", value: successLogs, icon: CheckCircle2, color: "text-accent", bg: "bg-accent/10" },
+          { label: "Agenda", value: "A cada 4h", icon: Zap, color: "text-warning", bg: "bg-warning/10" },
         ].map((s, i) => (
           <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
             <div className={`h-10 w-10 rounded-lg ${s.bg} flex items-center justify-center`}><s.icon className={`h-5 w-5 ${s.color}`} /></div>
@@ -105,9 +111,8 @@ export default function AgentMonitor() {
         ))}
       </div>
 
-      {/* Pipeline visualization */}
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="rounded-xl border border-border bg-card p-5">
-        <h3 className="text-sm font-semibold mb-4">Agent Pipeline</h3>
+        <h3 className="text-sm font-semibold mb-4">Pipeline de Agentes</h3>
         <div className="flex items-center gap-1 overflow-x-auto pb-2">
           {PIPELINE_AGENTS.map((agent, i) => {
             const dbAgent = agents?.find((a) => a.agent_name === agent.name);
@@ -130,7 +135,7 @@ export default function AgentMonitor() {
                     <span className={`h-1.5 w-1.5 rounded-full ${
                       status === "processing" ? "bg-warning animate-pulse" : status === "active" ? "bg-success" : "bg-muted-foreground/30"
                     }`} />
-                    <span className="text-[9px] font-mono text-muted-foreground capitalize">{status}</span>
+                    <span className="text-[9px] font-mono text-muted-foreground">{statusLabel(status)}</span>
                   </div>
                 </motion.div>
                 {i < PIPELINE_AGENTS.length - 1 && (
@@ -143,11 +148,10 @@ export default function AgentMonitor() {
       </motion.div>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Agent Status List */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="space-y-3">
-          <h2 className="text-sm font-semibold">Agent Status</h2>
+          <h2 className="text-sm font-semibold">Status dos Agentes</h2>
           {agentsLoading ? (
-            <div className="text-sm text-muted-foreground">Loading agents...</div>
+            <div className="text-sm text-muted-foreground">Carregando agentes...</div>
           ) : (
             agents?.map((agent, i) => {
               const pAgent = PIPELINE_AGENTS.find((p) => p.name === agent.agent_name);
@@ -173,9 +177,9 @@ export default function AgentMonitor() {
                     <p className="text-[10px] text-muted-foreground">{agent.role}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-[10px] font-mono text-muted-foreground capitalize">{agent.status}</span>
+                    <span className="text-[10px] font-mono text-muted-foreground">{statusLabel(agent.status)}</span>
                     {agent.last_run && (
-                      <p className="text-[9px] text-muted-foreground/50">{formatDistanceToNow(new Date(agent.last_run), { addSuffix: true })}</p>
+                      <p className="text-[9px] text-muted-foreground/50">{formatDistanceToNow(new Date(agent.last_run), { addSuffix: true, locale: ptBR })}</p>
                     )}
                   </div>
                 </motion.div>
@@ -184,22 +188,21 @@ export default function AgentMonitor() {
           )}
         </motion.div>
 
-        {/* Live Activity Feed */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <h2 className="text-sm font-semibold mb-3">Live Activity Feed</h2>
+          <h2 className="text-sm font-semibold mb-3">Feed de Atividade ao Vivo</h2>
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="bg-secondary/50 px-4 py-2 flex items-center gap-2 border-b border-border">
               <div className="h-2 w-2 rounded-full bg-destructive" />
               <div className="h-2 w-2 rounded-full bg-warning" />
               <div className="h-2 w-2 rounded-full bg-success" />
               <span className="text-[10px] font-mono text-muted-foreground ml-2">agent-pipeline.log</span>
-              {running && <span className="text-[9px] text-primary animate-pulse ml-auto">● LIVE</span>}
+              {running && <span className="text-[9px] text-primary animate-pulse ml-auto">● AO VIVO</span>}
             </div>
             <div className="p-4 font-mono text-[11px] space-y-1.5 max-h-[420px] overflow-y-auto bg-background/50">
               {logsLoading ? (
-                <p className="text-muted-foreground">Loading logs...</p>
+                <p className="text-muted-foreground">Carregando logs...</p>
               ) : !logs?.length ? (
-                <p className="text-muted-foreground/50">No agent activity yet. Click "Run Pipeline" to start.</p>
+                <p className="text-muted-foreground/50">Sem atividade de agentes ainda. Clique em "Executar Pipeline" para iniciar.</p>
               ) : (
                 <AnimatePresence initial={false}>
                   {logs.map((log: any, i: number) => (
@@ -211,7 +214,7 @@ export default function AgentMonitor() {
                       className="flex gap-2"
                     >
                       <span className="text-muted-foreground/40 shrink-0 w-14">
-                        {format(new Date(log.created_at), "HH:mm:ss")}
+                        {format(new Date(log.created_at), "HH:mm:ss", { locale: ptBR })}
                       </span>
                       <span className={`shrink-0 w-2 h-2 rounded-full mt-1 ${levelDots[log.level] || "bg-muted-foreground/30"}`} />
                       <span className={`shrink-0 ${levelColors[log.level] || "text-muted-foreground"}`}>

@@ -12,6 +12,13 @@ import { seedUserData } from "@/lib/seedData";
 import { DiscoveryEngine } from "@/components/DiscoveryEngine";
 import { TrendsList } from "@/components/TrendsList";
 
+const competitionLabel = (level: string | null) => {
+  if (level === "Low") return "Baixa";
+  if (level === "Medium") return "Média";
+  if (level === "High") return "Alta";
+  return level ?? "-";
+};
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -21,7 +28,6 @@ export default function Dashboard() {
   const { data: niches } = useNiches();
   const { data: agentLogs } = useAgentLogs();
 
-  // Seed data on first login
   useEffect(() => {
     if (user) seedUserData(user.id);
   }, [user]);
@@ -32,30 +38,30 @@ export default function Dashboard() {
     <div className="space-y-6 max-w-7xl">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Real-time overview of AI opportunity discovery</p>
+          <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
+          <p className="text-sm text-muted-foreground mt-1">Visão em tempo real da descoberta de oportunidades com IA</p>
         </div>
         <button
           onClick={() => setDiscoveryOpen(true)}
           className="h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium flex items-center gap-2 hover:opacity-90 transition-opacity glow-primary"
         >
-          <Zap className="h-4 w-4" /> Discover Opportunities
+          <Zap className="h-4 w-4" /> Descobrir Oportunidades
         </button>
       </div>
 
       <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); navigate("/opportunities"); }} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <StatCard label="Top Score" value={topScore} icon={BarChart3} trend="+12% this week" glowing />
-        <StatCard label="Ideas Discovered" value={opportunities?.length ?? 0} icon={Lightbulb} />
-        <StatCard label="Trends Detected" value={trends?.length ?? 0} icon={TrendingUp} />
-        <StatCard label="Niches Analyzed" value={niches?.length ?? 0} icon={Target} />
-        <StatCard label="Market Predictions" value={89} icon={LineChart} trend="94% accuracy" />
+        <StatCard label="Maior Pontuação" value={topScore} icon={BarChart3} trend="+12% nesta semana" glowing />
+        <StatCard label="Ideias Descobertas" value={opportunities?.length ?? 0} icon={Lightbulb} />
+        <StatCard label="Tendências Detectadas" value={trends?.length ?? 0} icon={TrendingUp} />
+        <StatCard label="Nichos Analisados" value={niches?.length ?? 0} icon={Target} />
+        <StatCard label="Previsões de Mercado" value={89} icon={LineChart} trend="94% de precisão" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-2 rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold mb-4">Opportunities Over Time</h3>
+          <h3 className="text-sm font-semibold mb-4">Oportunidades ao Longo do Tempo</h3>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={chartData}>
               <defs>
@@ -77,21 +83,21 @@ export default function Dashboard() {
             </AreaChart>
           </ResponsiveContainer>
           <div className="flex gap-4 mt-3">
-            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className="h-2 w-2 rounded-full bg-primary" />Discovered</span>
-            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className="h-2 w-2 rounded-full bg-accent" />Validated</span>
+            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className="h-2 w-2 rounded-full bg-primary" />Descobertas</span>
+            <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className="h-2 w-2 rounded-full bg-accent" />Validadas</span>
           </div>
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="rounded-xl border border-border bg-card p-5">
-          <h3 className="text-sm font-semibold mb-4">AI Activity Feed</h3>
+          <h3 className="text-sm font-semibold mb-4">Feed de Atividade da IA</h3>
           <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
             {!agentLogs?.length ? (
-              <p className="text-[11px] text-muted-foreground/50">No activity yet. Run the pipeline to see logs.</p>
+              <p className="text-[11px] text-muted-foreground/50">Sem atividade ainda. Execute o pipeline para ver os logs.</p>
             ) : (
               agentLogs.slice(0, 15).map((log: any) => (
                 <div key={log.id} className="flex gap-3 text-[11px]">
                   <span className="text-muted-foreground/50 font-mono shrink-0 w-16">
-                    {new Date(log.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(log.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                   </span>
                   <div>
                     <span className="text-primary font-medium">{log.agent_name}</span>
@@ -105,15 +111,14 @@ export default function Dashboard() {
         </motion.div>
       </div>
 
-      {/* Trends Section */}
       <TrendsList />
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="rounded-xl border border-border bg-card">
         <div className="p-5 border-b border-border">
-          <h3 className="text-sm font-semibold">Recent Opportunities</h3>
+          <h3 className="text-sm font-semibold">Oportunidades Recentes</h3>
         </div>
         {oppLoading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">Loading opportunities...</div>
+          <div className="p-8 text-center text-sm text-muted-foreground">Carregando oportunidades...</div>
         ) : (
           <div className="divide-y divide-border">
             {opportunities?.map((opp) => (
@@ -124,7 +129,7 @@ export default function Dashboard() {
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{opp.title}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{opp.niche} · Competition: {opp.competition_level}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{opp.niche} · Concorrência: {competitionLabel(opp.competition_level)}</p>
                 </div>
                 <span className="text-lg font-bold text-primary ml-4">{opp.market_score}</span>
               </button>
