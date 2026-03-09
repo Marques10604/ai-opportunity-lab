@@ -194,6 +194,7 @@ export type Database = {
           niche: string | null
           problem: string | null
           solution: string | null
+          source_pattern_id: string | null
           title: string
           user_id: string
         }
@@ -206,6 +207,7 @@ export type Database = {
           niche?: string | null
           problem?: string | null
           solution?: string | null
+          source_pattern_id?: string | null
           title: string
           user_id: string
         }
@@ -218,10 +220,19 @@ export type Database = {
           niche?: string | null
           problem?: string | null
           solution?: string | null
+          source_pattern_id?: string | null
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_source_pattern_id_fkey"
+            columns: ["source_pattern_id"]
+            isOneToOne: false
+            referencedRelation: "problem_patterns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       problem_patterns: {
         Row: {
