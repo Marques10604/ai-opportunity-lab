@@ -161,20 +161,23 @@ Deno.serve(async (req) => {
       });
     }
 
-    const rows = problems.map((p) => ({
-      user_id: userId,
-      problem_title: (p.problem_title || "Sem título").trim(),
-      problem_description: p.problem_description?.trim() ?? null,
-      source_platform: p.source_platform?.trim() ?? null,
-      frequency_score:
-        typeof p.frequency_score === "number"
-          ? Math.min(100, Math.max(0, p.frequency_score * 10))
-          : 0,
-      urgency_score:
-        typeof p.urgency_score === "number"
-          ? Math.min(100, Math.max(0, p.urgency_score * 10))
-          : 0,
-    }));
+    const rows = problems.map((p) => {
+      const freq = typeof p.frequency_score === "number"
+        ? Math.min(100, Math.max(0, p.frequency_score * 10))
+        : 0;
+      const urg = typeof p.urgency_score === "number"
+        ? Math.min(100, Math.max(0, p.urgency_score * 10))
+        : 0;
+      return {
+        user_id: userId,
+        problem_title: (p.problem_title || "Sem título").trim(),
+        problem_description: p.problem_description?.trim() ?? null,
+        source_platform: p.source_platform?.trim() ?? null,
+        frequency_score: freq,
+        urgency_score: urg,
+        viral_score: freq + urg,
+      };
+    });
 
     const { data, error } = await supabase
       .from("detected_problems")
