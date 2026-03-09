@@ -100,7 +100,7 @@ export default function Patterns() {
       if (opportunities.length === 0) throw new Error("Nenhuma oportunidade gerada");
 
       const { error: insertError } = await supabase.from("opportunities").insert(
-        opportunities.map((o: any) => ({ ...o, user_id: user!.id }))
+        opportunities.map((o: any) => ({ ...o, user_id: user!.id, source_pattern_id: pattern.id }))
       );
       if (insertError) throw insertError;
       return opportunities.length;
