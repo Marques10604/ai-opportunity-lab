@@ -15,6 +15,7 @@ import SavedPlans from "@/pages/SavedPlans";
 import Trends from "@/pages/Trends";
 import Problems from "@/pages/Problems";
 import Patterns from "@/pages/Patterns";
+import ContentOpportunities from "@/pages/ContentOpportunities";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ const AppRoutes = () => (
     <Route path="/trends" element={<ProtectedRoute><AppLayout><Trends /></AppLayout></ProtectedRoute>} />
     <Route path="/problems" element={<ProtectedRoute><AppLayout><Problems /></AppLayout></ProtectedRoute>} />
     <Route path="/patterns" element={<ProtectedRoute><AppLayout><Patterns /></AppLayout></ProtectedRoute>} />
+    <Route path="/contents" element={<ProtectedRoute><AppLayout><ContentOpportunities /></AppLayout></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

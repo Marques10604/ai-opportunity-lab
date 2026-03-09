@@ -9,6 +9,7 @@ import {
   TrendingUp,
   AlertCircle,
   Network,
+  MessageSquare,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NavLink } from "@/components/NavLink";
@@ -34,6 +35,7 @@ const navItems = [
   { title: "Problemas", url: "/problems", icon: AlertCircle },
   { title: "Padrões", url: "/patterns", icon: Network },
   { title: "Oportunidades", url: "/opportunities", icon: Lightbulb },
+  { title: "Conteúdos Gerados", url: "/contents", icon: MessageSquare },
   { title: "Planos Salvos", url: "/saved-plans", icon: FileText },
 ];
 
