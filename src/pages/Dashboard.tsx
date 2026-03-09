@@ -6,6 +6,8 @@ import { StatCard } from "@/components/StatCard";
 import { chartData } from "@/lib/mockData";
 import { useNavigate } from "react-router-dom";
 import { useOpportunities, useTrends, useNiches, useAgentLogs } from "@/hooks/useSupabaseData";
+import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { seedUserData } from "@/lib/seedData";
 import { DiscoveryEngine } from "@/components/DiscoveryEngine";
