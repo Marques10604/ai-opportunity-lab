@@ -16,6 +16,7 @@ import Trends from "@/pages/Trends";
 import Problems from "@/pages/Problems";
 import Patterns from "@/pages/Patterns";
 import ContentOpportunities from "@/pages/ContentOpportunities";
+import ContentDetail from "@/pages/ContentDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const AppRoutes = () => (
     <Route path="/problems" element={<ProtectedRoute><AppLayout><Problems /></AppLayout></ProtectedRoute>} />
     <Route path="/patterns" element={<ProtectedRoute><AppLayout><Patterns /></AppLayout></ProtectedRoute>} />
     <Route path="/contents" element={<ProtectedRoute><AppLayout><ContentOpportunities /></AppLayout></ProtectedRoute>} />
+    <Route path="/contents/:id" element={<ProtectedRoute><AppLayout><ContentDetail /></AppLayout></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );

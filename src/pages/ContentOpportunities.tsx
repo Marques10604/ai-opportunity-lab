@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MessageSquare, Search, Filter, Video, FileText, Image, Mic } from "lucide-react";
 import { useContentOpportunities } from "@/hooks/useSupabaseData";
@@ -21,6 +22,7 @@ const tipoIcons: Record<string, React.ElementType> = {
 };
 
 export default function ContentOpportunities() {
+  const navigate = useNavigate();
   const { data: contents, isLoading } = useContentOpportunities();
   const [search, setSearch] = useState("");
   const [platformFilter, setPlatformFilter] = useState<string>("all");
@@ -123,7 +125,8 @@ export default function ContentOpportunities() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
-                className="rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors"
+                onClick={() => navigate(`/contents/${content.id}`)}
+                className="rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors cursor-pointer"
               >
                 <div className="flex items-start gap-4">
                   <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center shrink-0">
