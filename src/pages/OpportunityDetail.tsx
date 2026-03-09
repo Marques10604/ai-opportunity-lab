@@ -308,7 +308,7 @@ export default function OpportunityDetail() {
 
               {/* UI Structure */}
               <div className="px-6 py-5 border-b border-border">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-info" /> Suggested UI Structure</h3>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><LayoutGrid className="h-4 w-4 text-info" /> Estrutura de Interface Sugerida</h3>
                 <div className="space-y-2">
                   {mvpPlan.ui_structure.map((page, i) => (
                     <div key={i} className="flex items-start gap-3 text-sm">
