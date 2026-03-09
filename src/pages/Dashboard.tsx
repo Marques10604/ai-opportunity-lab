@@ -73,8 +73,11 @@ const competitionLabel = (level: string | null) => {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [painHunterLoading, setPainHunterLoading] = useState(false);
+  const [pipelineRunning, setPipelineRunning] = useState(false);
+  const [pipelineStep, setPipelineStep] = useState<number>(0); // 0=idle, 1=pain, 2=patterns, 3=opportunities, 4=done
   const { data: opportunities, isLoading: oppLoading } = useOpportunities();
   const { data: trends } = useTrends();
   const { data: niches } = useNiches();
@@ -98,6 +101,77 @@ export default function Dashboard() {
     } finally {
       setPainHunterLoading(false);
     }
+  };
+
+  const runFullPipeline = async () => {
+    if (!user) return;
+    setPipelineRunning(true);
+    setPipelineStep(1);
+
+    try {
+      // Step 1: Pain Hunter
+      const { error: phError } = await supabase.functions.invoke("pain-hunter", {
+        body: { test_mode: true },
+      });
+      if (phError) throw new Error(`Caçador de Problemas: ${phError.message}`);
+      queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
+
+      // Step 2: Detect Patterns
+      setPipelineStep(2);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão expirada");
+
+      const { data: patternData, error: ptError } = await supabase.functions.invoke("detect-patterns", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (ptError) throw new Error(`Detector de Padrões: ${ptError.message}`);
+      if (patternData?.error) throw new Error(`Detector de Padrões: ${patternData.error}`);
+      queryClient.invalidateQueries({ queryKey: ["problem_patterns"] });
+      queryClient.invalidateQueries({ queryKey: ["top_patterns"] });
+
+      const patterns = patternData?.patterns || [];
+      if (patterns.length === 0) throw new Error("Nenhum padrão detectado para gerar oportunidades.");
+
+      // Step 3: Generate Opportunities from each pattern
+      setPipelineStep(3);
+      let totalOpps = 0;
+      for (const pattern of patterns) {
+        const { data: oppData, error: oppError } = await supabase.functions.invoke("generate-opportunities", {
+          body: {
+            pattern_context: {
+              pattern_title: pattern.pattern_title,
+              pattern_description: pattern.pattern_description,
+              related_problems: pattern.related_problems || [],
+            },
+          },
+        });
+        if (oppError) {
+          console.error("Erro ao gerar oportunidades para padrão:", pattern.pattern_title, oppError);
+          continue;
+        }
+        const opps = oppData?.opportunities || [];
+        if (opps.length > 0) {
+          await supabase.from("opportunities").insert(
+            opps.map((o: any) => ({ ...o, user_id: user.id, source_pattern_id: pattern.id }))
+          );
+          totalOpps += opps.length;
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["agent_logs"] });
+      setPipelineStep(4);
+      toast.success(`Pipeline completo! ${patterns.length} padrões → ${totalOpps} oportunidades geradas.`);
+
+      // Auto-reset after 3s
+      setTimeout(() => { setPipelineStep(0); setPipelineRunning(false); }, 3000);
+      return;
+    } catch (err: any) {
+      console.error("Erro no pipeline:", err);
+      toast.error(err?.message || "Erro ao executar pipeline completo");
+    }
+    setPipelineStep(0);
+    setPipelineRunning(false);
   };
 
   const topScore = opportunities?.length ? Math.max(...opportunities.map(o => o.market_score ?? 0)) : 0;
