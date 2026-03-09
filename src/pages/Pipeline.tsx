@@ -34,7 +34,7 @@ export default function Pipeline() {
 
   const pipelineNodes = [
     { id: "sources", name: "Fontes de Dados", icon: Database, status: null },
-    ...(agents?.map((a) => ({ id: a.id, name: a.agent_name, icon: agentIcons[a.agent_name] || Sparkles, status: a.status })) ?? []),
+    ...(agents?.map((a) => ({ id: a.id, name: agentLabels[a.agent_name] || a.agent_name, icon: agentIcons[a.agent_name] || Sparkles, status: a.status })) ?? []),
     { id: "results", name: "Resultados de Oportunidades", icon: Sparkles, status: null },
   ];
 
