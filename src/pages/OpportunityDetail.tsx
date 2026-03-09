@@ -273,7 +273,7 @@ export default function OpportunityDetail() {
 
               {/* Product Concept */}
               <div className="px-6 py-5 border-b border-border">
-                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /> Product Concept</h3>
+                <h3 className="text-sm font-semibold mb-2 flex items-center gap-2"><Rocket className="h-4 w-4 text-primary" /> Conceito do Produto</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{mvpPlan.product_concept}</p>
               </div>
 
