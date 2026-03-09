@@ -321,7 +321,7 @@ export default function OpportunityDetail() {
 
               {/* Roadmap */}
               <div className="px-6 py-5 border-b border-border">
-                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Map className="h-4 w-4 text-warning" /> Development Roadmap</h3>
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Map className="h-4 w-4 text-warning" /> Roadmap de Desenvolvimento</h3>
                 <div className="space-y-4">
                   {mvpPlan.roadmap.map((phase, pi) => (
                     <motion.div key={pi} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: pi * 0.08 }}>
