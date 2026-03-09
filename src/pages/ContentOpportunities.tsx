@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MessageSquare, Search, Filter, Video, FileText, Image, Mic } from "lucide-react";
 import { useContentOpportunities } from "@/hooks/useSupabaseData";
