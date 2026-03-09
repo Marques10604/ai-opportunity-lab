@@ -1,17 +1,67 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap, Search, Loader2 } from "lucide-react";
+import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap, Search, Loader2, Network } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { StatCard } from "@/components/StatCard";
 import { chartData } from "@/lib/mockData";
 import { useNavigate } from "react-router-dom";
 import { useOpportunities, useTrends, useNiches, useAgentLogs } from "@/hooks/useSupabaseData";
+import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { seedUserData } from "@/lib/seedData";
 import { DiscoveryEngine } from "@/components/DiscoveryEngine";
 import { TrendsList } from "@/components/TrendsList";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+function TopPatternsCard({ navigate }: { navigate: (path: string) => void }) {
+  const { user } = useAuth();
+  const { data: patterns = [], isLoading } = useQuery({
+    queryKey: ["top_patterns", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("problem_patterns")
+        .select("id, pattern_title, average_viral_score, total_occurrences")
+        .order("average_viral_score", { ascending: false })
+        .limit(3);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Network className="h-4 w-4 text-primary" /> Top Padrões
+        </h3>
+        <button onClick={() => navigate("/patterns")} className="text-[11px] text-primary hover:underline">Ver todos</button>
+      </div>
+      {isLoading ? (
+        <p className="text-xs text-muted-foreground">Carregando...</p>
+      ) : patterns.length === 0 ? (
+        <p className="text-xs text-muted-foreground/60">Nenhum padrão detectado ainda.</p>
+      ) : (
+        <div className="space-y-3">
+          {patterns.map((p, i) => (
+            <button key={p.id} onClick={() => navigate("/patterns")} className="w-full flex items-center gap-3 rounded-lg p-3 hover:bg-secondary/50 transition-colors text-left">
+              <span className="text-lg font-bold text-primary/70 w-6 text-center">{i + 1}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{p.pattern_title}</p>
+                <div className="flex gap-2 mt-1">
+                  <Badge variant="outline" className="text-[10px] h-5">⚡ Viral: {p.average_viral_score}</Badge>
+                  <Badge variant="secondary" className="text-[10px] h-5">{p.total_occurrences} ocorrências</Badge>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
 
 const competitionLabel = (level: string | null) => {
   if (level === "Low") return "Baixa";
@@ -138,6 +188,8 @@ export default function Dashboard() {
           </div>
         </motion.div>
       </div>
+
+      <TopPatternsCard navigate={navigate} />
 
       <TrendsList />
 
