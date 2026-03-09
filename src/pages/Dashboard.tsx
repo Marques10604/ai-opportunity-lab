@@ -77,7 +77,10 @@ export default function Dashboard() {
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [painHunterLoading, setPainHunterLoading] = useState(false);
   const [pipelineRunning, setPipelineRunning] = useState(false);
-  const [pipelineStep, setPipelineStep] = useState<number>(0); // 0=idle, 1=pain, 2=patterns, 3=opportunities, 4=done
+  const [pipelineStep, setPipelineStep] = useState<number>(0);
+  const [pipelineLogs, setPipelineLogs] = useState<{ time: string; icon: string; text: string; level: "info" | "success" | "warn" }[]>([]);
+  const [stepStartTime, setStepStartTime] = useState<number>(0);
+  const [stepElapsed, setStepElapsed] = useState<number>(0);
   const { data: opportunities, isLoading: oppLoading } = useOpportunities();
   const { data: trends } = useTrends();
   const { data: niches } = useNiches();
