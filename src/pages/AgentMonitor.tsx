@@ -130,7 +130,7 @@ export default function AgentMonitor() {
                   <div className={`h-7 w-7 rounded-md ${agent.bg} flex items-center justify-center mb-2`}>
                     <agent.icon className={`h-3.5 w-3.5 ${agent.color}`} />
                   </div>
-                  <p className="text-[11px] font-medium truncate">{agent.name}</p>
+                  <p className="text-[11px] font-medium truncate">{agent.label}</p>
                   <div className="flex items-center gap-1.5 mt-1">
                     <span className={`h-1.5 w-1.5 rounded-full ${
                       status === "processing" ? "bg-warning animate-pulse" : status === "active" ? "bg-success" : "bg-muted-foreground/30"
