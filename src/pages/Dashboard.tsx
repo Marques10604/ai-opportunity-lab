@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap, Search, Loader2, Network, Play, CheckCircle2 } from "lucide-react";
+import { BarChart3, Lightbulb, TrendingUp, Target, LineChart, Zap, Search, Loader2, Network, Play, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { StatCard } from "@/components/StatCard";
 import { chartData } from "@/lib/mockData";
@@ -77,7 +77,10 @@ export default function Dashboard() {
   const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [painHunterLoading, setPainHunterLoading] = useState(false);
   const [pipelineRunning, setPipelineRunning] = useState(false);
-  const [pipelineStep, setPipelineStep] = useState<number>(0); // 0=idle, 1=pain, 2=patterns, 3=opportunities, 4=done
+  const [pipelineStep, setPipelineStep] = useState<number>(0);
+  const [pipelineLogs, setPipelineLogs] = useState<{ time: string; icon: string; text: string; level: "info" | "success" | "warn" }[]>([]);
+  const [stepStartTime, setStepStartTime] = useState<number>(0);
+  const [stepElapsed, setStepElapsed] = useState<number>(0);
   const { data: opportunities, isLoading: oppLoading } = useOpportunities();
   const { data: trends } = useTrends();
   const { data: niches } = useNiches();
@@ -103,21 +106,51 @@ export default function Dashboard() {
     }
   };
 
+  const addLog = (icon: string, text: string, level: "info" | "success" | "warn" = "info") => {
+    const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    setPipelineLogs((prev) => [...prev, { time, icon, text, level }]);
+  };
+
+  const startStep = (step: number) => {
+    setPipelineStep(step);
+    setStepStartTime(Date.now());
+    setStepElapsed(0);
+  };
+
+  // Timer for current step elapsed
+  useEffect(() => {
+    if (!pipelineRunning || pipelineStep === 0 || pipelineStep === 4) return;
+    const interval = setInterval(() => {
+      setStepElapsed(Math.floor((Date.now() - stepStartTime) / 1000));
+    }, 500);
+    return () => clearInterval(interval);
+  }, [pipelineRunning, pipelineStep, stepStartTime]);
+
   const runFullPipeline = async () => {
     if (!user) return;
     setPipelineRunning(true);
-    setPipelineStep(1);
+    setPipelineLogs([]);
+    const totalStart = Date.now();
 
     try {
       // Step 1: Pain Hunter
-      const { error: phError } = await supabase.functions.invoke("pain-hunter", {
+      startStep(1);
+      addLog("🔍", "Iniciando Caçador de Problemas...");
+      addLog("⏱️", "Tempo estimado: ~15-25 segundos");
+
+      const { data: phData, error: phError } = await supabase.functions.invoke("pain-hunter", {
         body: { test_mode: true },
       });
       if (phError) throw new Error(`Caçador de Problemas: ${phError.message}`);
+      const problemCount = phData?.inserted || phData?.problems?.length || 0;
+      addLog("✅", `${problemCount} problemas detectados e armazenados`, "success");
       queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
 
       // Step 2: Detect Patterns
-      setPipelineStep(2);
+      startStep(2);
+      addLog("🔗", "Iniciando Detector de Padrões...");
+      addLog("⏱️", "Tempo estimado: ~10-20 segundos");
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Sessão expirada");
 
@@ -132,10 +165,21 @@ export default function Dashboard() {
       const patterns = patternData?.patterns || [];
       if (patterns.length === 0) throw new Error("Nenhum padrão detectado para gerar oportunidades.");
 
+      addLog("✅", `${patterns.length} padrões agrupados com sucesso`, "success");
+      patterns.forEach((p: any) => {
+        addLog("📊", `Padrão: "${p.pattern_title}" — ${p.total_occurrences || 0} ocorrências`);
+      });
+
       // Step 3: Generate Opportunities from each pattern
-      setPipelineStep(3);
+      startStep(3);
+      addLog("💡", "Iniciando Gerador de Oportunidades...");
+      addLog("⏱️", `Tempo estimado: ~${patterns.length * 10}-${patterns.length * 20}s (${patterns.length} padrões)`);
+
       let totalOpps = 0;
-      for (const pattern of patterns) {
+      for (let i = 0; i < patterns.length; i++) {
+        const pattern = patterns[i];
+        addLog("🔄", `Gerando oportunidades para "${pattern.pattern_title}" (${i + 1}/${patterns.length})...`);
+
         const { data: oppData, error: oppError } = await supabase.functions.invoke("generate-opportunities", {
           body: {
             pattern_context: {
@@ -146,7 +190,7 @@ export default function Dashboard() {
           },
         });
         if (oppError) {
-          console.error("Erro ao gerar oportunidades para padrão:", pattern.pattern_title, oppError);
+          addLog("⚠️", `Erro no padrão "${pattern.pattern_title}": ${oppError.message}`, "warn");
           continue;
         }
         const opps = oppData?.opportunities || [];
@@ -155,19 +199,25 @@ export default function Dashboard() {
             opps.map((o: any) => ({ ...o, user_id: user.id, source_pattern_id: pattern.id }))
           );
           totalOpps += opps.length;
+          opps.forEach((o: any) => {
+            addLog("🎯", `Nova oportunidade: "${o.title}" (score: ${o.market_score})`, "success");
+          });
         }
       }
 
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["agent_logs"] });
-      setPipelineStep(4);
-      toast.success(`Pipeline completo! ${patterns.length} padrões → ${totalOpps} oportunidades geradas.`);
 
-      // Auto-reset after 3s
-      setTimeout(() => { setPipelineStep(0); setPipelineRunning(false); }, 3000);
+      const totalTime = Math.round((Date.now() - totalStart) / 1000);
+      startStep(4);
+      addLog("🏁", `Pipeline concluído em ${totalTime}s — ${patterns.length} padrões → ${totalOpps} oportunidades`, "success");
+      toast.success(`Pipeline completo em ${totalTime}s! ${totalOpps} oportunidades geradas.`);
+
+      setTimeout(() => { setPipelineStep(0); setPipelineRunning(false); }, 5000);
       return;
     } catch (err: any) {
       console.error("Erro no pipeline:", err);
+      addLog("❌", err?.message || "Erro desconhecido", "warn");
       toast.error(err?.message || "Erro ao executar pipeline completo");
     }
     setPipelineStep(0);
@@ -217,40 +267,87 @@ export default function Dashboard() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="rounded-xl border border-primary/30 bg-primary/5 p-4 overflow-hidden"
+            className="rounded-xl border border-primary/30 bg-card overflow-hidden"
           >
-            <p className="text-xs font-semibold text-primary mb-3">Pipeline em execução...</p>
-            <div className="flex items-center gap-2">
-              {[
-                { step: 1, label: "Caçador de Problemas" },
-                { step: 2, label: "Detector de Padrões" },
-                { step: 3, label: "Gerador de Oportunidades" },
-              ].map((s) => (
-                <div key={s.step} className="flex items-center gap-2">
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    pipelineStep > s.step
-                      ? "bg-success/10 text-success"
-                      : pipelineStep === s.step
-                      ? "bg-primary/20 text-primary"
-                      : "bg-secondary text-muted-foreground"
-                  }`}>
-                    {pipelineStep > s.step ? (
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                    ) : pipelineStep === s.step ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0" />
-                    )}
-                    {s.label}
+            {/* Steps header */}
+            <div className="p-4 bg-primary/5 border-b border-primary/20">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-primary">Pipeline em execução...</p>
+                {pipelineStep > 0 && pipelineStep < 4 && (
+                  <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
+                    <Clock className="h-3 w-3" /> Etapa atual: {stepElapsed}s
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {[
+                  { step: 1, label: "Caçador de Problemas", est: "~15-25s" },
+                  { step: 2, label: "Detector de Padrões", est: "~10-20s" },
+                  { step: 3, label: "Gerador de Oportunidades", est: "~20-40s" },
+                ].map((s) => (
+                  <div key={s.step} className="flex items-center gap-2">
+                    <div className={`flex flex-col items-start px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      pipelineStep > s.step
+                        ? "bg-success/10 text-success"
+                        : pipelineStep === s.step
+                        ? "bg-primary/20 text-primary"
+                        : "bg-secondary text-muted-foreground"
+                    }`}>
+                      <div className="flex items-center gap-1.5">
+                        {pipelineStep > s.step ? (
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                        ) : pipelineStep === s.step ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <span className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0" />
+                        )}
+                        {s.label}
+                      </div>
+                      <span className="text-[9px] font-mono opacity-60 ml-5">{s.est}</span>
+                    </div>
+                    {s.step < 3 && <span className="text-muted-foreground/30">→</span>}
                   </div>
-                  {s.step < 3 && <span className="text-muted-foreground/30">→</span>}
-                </div>
-              ))}
-              {pipelineStep === 4 && (
-                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 text-success text-xs font-medium ml-2">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Concluído!
-                </motion.div>
-              )}
+                ))}
+                {pipelineStep === 4 && (
+                  <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 text-success text-xs font-medium ml-2">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Concluído!
+                  </motion.div>
+                )}
+              </div>
+            </div>
+
+            {/* Live log feed */}
+            <div className="p-3 max-h-[220px] overflow-y-auto bg-background/50">
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <div className="h-2 w-2 rounded-full bg-destructive" />
+                <div className="h-2 w-2 rounded-full bg-warning" />
+                <div className="h-2 w-2 rounded-full bg-success" />
+                <span className="text-[9px] font-mono text-muted-foreground ml-1">pipeline.log</span>
+                {pipelineStep > 0 && pipelineStep < 4 && (
+                  <span className="text-[9px] text-primary animate-pulse ml-auto">● AO VIVO</span>
+                )}
+              </div>
+              <div className="space-y-1 font-mono text-[11px]">
+                <AnimatePresence initial={false}>
+                  {pipelineLogs.map((log, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`flex gap-2 px-1 py-0.5 rounded ${
+                        log.level === "success" ? "text-success" : log.level === "warn" ? "text-destructive" : "text-foreground/70"
+                      }`}
+                    >
+                      <span className="text-muted-foreground/40 shrink-0 w-16">{log.time}</span>
+                      <span className="shrink-0">{log.icon}</span>
+                      <span>{log.text}</span>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                {pipelineLogs.length === 0 && (
+                  <p className="text-muted-foreground/40 px-1">Aguardando início...</p>
+                )}
+              </div>
             </div>
           </motion.div>
         )}
