@@ -155,7 +155,7 @@ export default function ContentDetail() {
   if (!content) {
     return (
       <div className="max-w-4xl space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/contents")}>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/content/generated")}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
         </Button>
         <div className="rounded-xl border border-border bg-card p-12 text-center">
