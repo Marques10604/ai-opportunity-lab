@@ -384,7 +384,7 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); navigate("/saas/opportunities"); }} /> />
+      <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); navigate("/saas/opportunities"); }} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard label="Maior Pontuação" value={topScore} icon={BarChart3} trend="+12% nesta semana" glowing />
