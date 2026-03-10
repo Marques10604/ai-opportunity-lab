@@ -80,7 +80,7 @@ export default function Opportunities() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                onClick={() => navigate(`/opportunities/${opp.id}`)}
+                onClick={() => onClick={() => navigate(`/saas/opportunities/${opp.id}`)}}
                 className="w-full rounded-xl border border-border bg-card p-5 hover:border-primary/30 transition-all flex items-center gap-4 text-left group"
               >
                 <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">

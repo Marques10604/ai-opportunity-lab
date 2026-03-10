@@ -125,7 +125,7 @@ export default function ContentOpportunities() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
-                onClick={() => navigate(`/contents/${content.id}`)}
+                onClick={() => onClick={() => navigate(`/content/generated/${content.id}`)}}
                 className="rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors cursor-pointer"
               >
                 <div className="flex items-start gap-4">

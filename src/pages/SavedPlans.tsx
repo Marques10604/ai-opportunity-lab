@@ -91,7 +91,7 @@ export default function SavedPlans() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => navigate(`/opportunities/${plan.opportunity_id}`)}
+                      onClick={() => onClick={() => navigate(`/saas/opportunities/${plan.opportunity_id}`)}}
                       className="h-8 px-3 rounded-md bg-secondary text-xs font-medium text-secondary-foreground hover:bg-secondary/80 transition-colors"
                     >
                       Ver Oportunidade

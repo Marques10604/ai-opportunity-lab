@@ -461,7 +461,7 @@ export default function Dashboard() {
             {opportunities?.map((opp) => (
               <button
                 key={opp.id}
-                onClick={() => navigate(`/opportunities/${opp.id}`)}
+                onClick={() => onClick={() => navigate(`/saas/opportunities/${opp.id}`)}}
                 className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors text-left"
               >
                 <div className="flex-1 min-w-0">

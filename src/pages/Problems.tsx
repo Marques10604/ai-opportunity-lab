@@ -243,7 +243,7 @@ export default function Problems() {
                   Gerar Conteúdo
                 </button>
                 <button
-                  onClick={() => navigate(`/problems/${problem.id}`)}
+                  onClick={() => onClick={() => navigate(`/discovery/detected/${problem.id}`)}}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-medium hover:bg-secondary transition-colors"
                 >
                   <Eye className="h-3.5 w-3.5" />
