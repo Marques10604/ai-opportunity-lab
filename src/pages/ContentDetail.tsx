@@ -171,7 +171,7 @@ export default function ContentDetail() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <Button variant="ghost" size="sm" onClick={() => <Button variant="ghost" size="sm" onClick={() => navigate("/content/generated")} className="gap-2">>
+      <Button variant="ghost" size="sm" <Button variant="ghost" size="sm" onClick={() => navigate("/content/generated")} className="gap-2">="ghost" size="sm" onClick={() => navigate("/content/generated")} className="gap-2">>
         <ArrowLeft className="h-4 w-4" /> Voltar aos conteúdos
       </Button>
 
