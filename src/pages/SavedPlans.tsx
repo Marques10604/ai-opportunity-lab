@@ -55,7 +55,7 @@ export default function SavedPlans() {
           <FileText className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
           <p className="text-sm text-muted-foreground">Você ainda não salvou nenhum plano.</p>
           <p className="text-xs text-muted-foreground/60 mt-1">Gere um plano de MVP a partir de qualquer oportunidade para começar.</p>
-          <button <button onClick={() => navigate("/saas/opportunities")} className="mt-4 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">={() => navigate("/saas/opportunities")} className="mt-4 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">} className="mt-4 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+          <button onClick={() => navigate("/saas/opportunities")} className="mt-4 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
             Ver Oportunidades
           </button>
         </div>
