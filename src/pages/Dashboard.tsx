@@ -37,7 +37,7 @@ function TopPatternsCard({ navigate }: { navigate: (path: string) => void }) {
         <h3 className="text-sm font-semibold flex items-center gap-2">
           <Network className="h-4 w-4 text-primary" /> Top Padrões
         </h3>
-        <button onClick={() => navigate("/patterns")} className="text-[11px] text-primary hover:underline">Ver todos</button>
+        <button onClick={() => navigate("/discovery/patterns")} className="text-[11px] text-primary hover:underline">Ver todos</button>
       </div>
       {isLoading ? (
         <p className="text-xs text-muted-foreground">Carregando...</p>
@@ -46,7 +46,7 @@ function TopPatternsCard({ navigate }: { navigate: (path: string) => void }) {
       ) : (
         <div className="space-y-3">
           {patterns.map((p, i) => (
-            <button key={p.id} onClick={() => navigate("/patterns")} className="w-full flex items-center gap-3 rounded-lg p-3 hover:bg-secondary/50 transition-colors text-left">
+            <button key={p.id} onClick={() => navigate("/discovery/patterns")} className="w-full flex items-center gap-3 rounded-lg p-3 hover:bg-secondary/50 transition-colors text-left">
               <span className="text-lg font-bold text-primary/70 w-6 text-center">{i + 1}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{p.pattern_title}</p>
@@ -118,7 +118,6 @@ export default function Dashboard() {
     setStepElapsed(0);
   };
 
-  // Timer for current step elapsed
   useEffect(() => {
     if (!pipelineRunning || pipelineStep === 0 || pipelineStep === 4) return;
     const interval = setInterval(() => {
@@ -144,7 +143,6 @@ export default function Dashboard() {
     try {
       const checkAbort = () => { if (signal.aborted) throw new Error("Pipeline cancelado pelo usuário."); };
 
-      // Step 1: Pain Hunter
       startStep(1);
       addLog("🔍", "Iniciando Caçador de Problemas...");
       addLog("⏱️", "Tempo estimado: ~15-25 segundos");
@@ -158,7 +156,6 @@ export default function Dashboard() {
       addLog("✅", `${problemCount} problemas detectados e armazenados`, "success");
       queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
 
-      // Step 2: Detect Patterns
       checkAbort();
       startStep(2);
       addLog("🔗", "Iniciando Detector de Padrões...");
@@ -184,7 +181,6 @@ export default function Dashboard() {
         addLog("📊", `Padrão: "${p.pattern_title}" — ${p.total_occurrences || 0} ocorrências`);
       });
 
-      // Step 3: Generate Opportunities from each pattern
       checkAbort();
       startStep(3);
       addLog("💡", "Iniciando Gerador de Oportunidades...");
@@ -300,7 +296,6 @@ export default function Dashboard() {
             exit={{ opacity: 0, height: 0 }}
             className="rounded-xl border border-primary/30 bg-card overflow-hidden"
           >
-            {/* Steps header */}
             <div className="p-4 bg-primary/5 border-b border-primary/20">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-primary">Pipeline em execução...</p>
@@ -347,7 +342,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Live log feed */}
             <div className="p-3 max-h-[220px] overflow-y-auto bg-background/50">
               <div className="flex items-center gap-2 mb-2 px-1">
                 <div className="h-2 w-2 rounded-full bg-destructive" />
@@ -384,7 +378,7 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); navigate("/opportunities"); }} />
+      <DiscoveryEngine open={discoveryOpen} onClose={() => { setDiscoveryOpen(false); navigate("/saas/opportunities"); }} />
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard label="Maior Pontuação" value={topScore} icon={BarChart3} trend="+12% nesta semana" glowing />
@@ -461,7 +455,7 @@ export default function Dashboard() {
             {opportunities?.map((opp) => (
               <button
                 key={opp.id}
-                onClick={() => navigate(`/opportunities/${opp.id}`)}
+                onClick={() => navigate(`/saas/opportunities/${opp.id}`)}
                 className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors text-left"
               >
                 <div className="flex-1 min-w-0">

@@ -183,7 +183,6 @@ export default function Problems() {
               transition={{ delay: i * 0.03 }}
               className="rounded-xl border border-border bg-card p-5 space-y-4 hover:border-primary/30 transition-colors"
             >
-              {/* Title */}
               <div>
                 <h3 className="text-sm font-bold leading-snug">{problem.problem_title}</h3>
                 <div className="flex items-center gap-2 mt-1.5">
@@ -201,7 +200,6 @@ export default function Problems() {
                 </div>
               </div>
 
-              {/* Description */}
               {problem.problem_description && (
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium mb-1">Problema</p>
@@ -209,7 +207,6 @@ export default function Problems() {
                 </div>
               )}
 
-              {/* Scores */}
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary">
                   <TrendingUp className="h-3 w-3 text-primary" />
@@ -228,7 +225,6 @@ export default function Problems() {
                 </div>
               </div>
 
-              {/* Actions */}
               <div className="flex items-center gap-2 pt-1 border-t border-border">
                 <button
                   onClick={() => generateContentIdea(problem.id, problem.problem_title, problem.problem_description)}
@@ -243,7 +239,7 @@ export default function Problems() {
                   Gerar Conteúdo
                 </button>
                 <button
-                  onClick={() => navigate(`/problems/${problem.id}`)}
+                  onClick={() => navigate(`/discovery/detected/${problem.id}`)}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-medium hover:bg-secondary transition-colors"
                 >
                   <Eye className="h-3.5 w-3.5" />
@@ -303,7 +299,6 @@ export default function Problems() {
                   <p className="text-sm italic text-foreground">"{contentIdea.content_hook}"</p>
                 </div>
 
-                {/* Video Script Section */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Film className="h-4 w-4 text-primary" />
@@ -315,17 +310,14 @@ export default function Problems() {
                       <p className="text-[10px] uppercase tracking-widest text-destructive font-bold mb-1">🎯 Hook (3s)</p>
                       <p className="text-sm text-foreground">{contentIdea.video_script?.hook}</p>
                     </div>
-
                     <div className="rounded-lg border border-border bg-secondary/30 p-3">
                       <p className="text-[10px] uppercase tracking-widest text-muted-foreground/80 font-bold mb-1">😩 Problema</p>
                       <p className="text-sm text-foreground">{contentIdea.video_script?.problem}</p>
                     </div>
-
                     <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
                       <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">💡 Insight</p>
                       <p className="text-sm text-foreground">{contentIdea.video_script?.insight}</p>
                     </div>
-
                     <div className="rounded-lg border border-success/30 bg-success/5 p-3">
                       <p className="text-[10px] uppercase tracking-widest text-success font-bold mb-1">📣 CTA</p>
                       <p className="text-sm text-foreground">{contentIdea.video_script?.cta}</p>
@@ -344,7 +336,6 @@ export default function Problems() {
                   </button>
                 </div>
 
-                {/* Carousel Section */}
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
                     <LayoutGrid className="h-4 w-4 text-accent" />
@@ -362,25 +353,21 @@ export default function Problems() {
                       <p className="text-[10px] text-muted-foreground mb-1">Hook</p>
                       <p className="text-xs text-foreground leading-tight">{contentIdea.carousel?.slide_1_hook}</p>
                     </div>
-
                     <div className="rounded-lg border border-border bg-secondary/30 p-2.5 text-center">
                       <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold mb-1">Slide 2</p>
                       <p className="text-[10px] text-muted-foreground mb-1">Problema</p>
                       <p className="text-xs text-foreground leading-tight">{contentIdea.carousel?.slide_2_problem}</p>
                     </div>
-
                     <div className="rounded-lg border border-border bg-secondary/30 p-2.5 text-center">
                       <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold mb-1">Slide 3</p>
                       <p className="text-[10px] text-muted-foreground mb-1">Explicação</p>
                       <p className="text-xs text-foreground leading-tight">{contentIdea.carousel?.slide_3_explanation}</p>
                     </div>
-
                     <div className="rounded-lg border border-primary/30 bg-primary/5 p-2.5 text-center">
                       <p className="text-[9px] uppercase tracking-widest text-primary font-bold mb-1">Slide 4</p>
                       <p className="text-[10px] text-muted-foreground mb-1">Solução</p>
                       <p className="text-xs text-foreground leading-tight">{contentIdea.carousel?.slide_4_tip_or_solution}</p>
                     </div>
-
                     <div className="rounded-lg border border-success/30 bg-success/5 p-2.5 text-center">
                       <p className="text-[9px] uppercase tracking-widest text-success font-bold mb-1">Slide 5</p>
                       <p className="text-[10px] text-muted-foreground mb-1">CTA</p>

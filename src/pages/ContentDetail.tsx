@@ -155,7 +155,7 @@ export default function ContentDetail() {
   if (!content) {
     return (
       <div className="max-w-4xl space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/contents")}>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/content/generated")}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
         </Button>
         <div className="rounded-xl border border-border bg-card p-12 text-center">
@@ -171,7 +171,7 @@ export default function ContentDetail() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <Button variant="ghost" size="sm" onClick={() => navigate("/contents")} className="gap-2">
+      <Button variant="ghost" size="sm" onClick={() => navigate("/content/generated")} className="gap-2">
         <ArrowLeft className="h-4 w-4" /> Voltar aos conteúdos
       </Button>
 

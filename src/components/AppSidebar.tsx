@@ -1,19 +1,42 @@
 import {
   LayoutDashboard,
-  GitBranch,
-  Cpu,
-  Lightbulb,
-  Sparkles,
-  LogOut,
-  FileText,
+  Search,
   TrendingUp,
   AlertCircle,
   Network,
+  Clock,
+  Target,
+  Lightbulb,
   MessageSquare,
+  FileText,
+  Sparkles,
+  LogOut,
+  Globe,
+  Wrench,
+  Star,
+  ThumbsDown,
+  Bug,
+  FileWarning,
+  FlaskConical,
+  Rocket,
+  Cpu,
+  Layers,
+  BarChart3,
+  Flame,
+  Brain,
+  Megaphone,
+  Film,
+  Columns3,
+  CalendarDays,
+  Zap,
+  Plug,
+  HelpCircle,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -26,18 +49,76 @@ import {
   SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
-const navItems = [
+type NavItem = { title: string; url: string; icon: any };
+type NavSection = { label: string; items: NavItem[] };
+
+const navSections: (NavItem | NavSection)[] = [
   { title: "Painel", url: "/", icon: LayoutDashboard },
-  { title: "Pipeline", url: "/pipeline", icon: GitBranch },
-  { title: "Monitor de Agentes", url: "/agents", icon: Cpu },
-  { title: "Tendências", url: "/trends", icon: TrendingUp },
-  { title: "Problemas", url: "/problems", icon: AlertCircle },
-  { title: "Padrões", url: "/patterns", icon: Network },
-  { title: "Oportunidades", url: "/opportunities", icon: Lightbulb },
-  { title: "Conteúdos Gerados", url: "/contents", icon: MessageSquare },
-  { title: "Planos Salvos", url: "/saved-plans", icon: FileText },
+  {
+    label: "Descoberta de Problemas",
+    items: [
+      { title: "Caçador de Problemas", url: "/discovery/hunter", icon: Search },
+      { title: "Tendências da Internet", url: "/discovery/trends", icon: TrendingUp },
+      { title: "Problemas Detectados", url: "/discovery/detected", icon: AlertCircle },
+      { title: "Padrões de Problemas", url: "/discovery/patterns", icon: Network },
+      { title: "Janela de Oportunidade", url: "/discovery/window", icon: Clock },
+    ],
+  },
+  {
+    label: "Inteligência de Nichos",
+    items: [
+      { title: "Nichos Detectados", url: "/niches/detected", icon: Target },
+      { title: "Dores por Nicho", url: "/niches/pains", icon: AlertCircle },
+      { title: "Ferramentas por Nicho", url: "/niches/tools", icon: Wrench },
+    ],
+  },
+  {
+    label: "Conteúdo para Redes Sociais",
+    items: [
+      { title: "Ideias de Conteúdo", url: "/content/ideas", icon: Lightbulb },
+      { title: "Roteiros de Vídeo", url: "/content/scripts", icon: Film },
+      { title: "Conteúdos Gerados", url: "/content/generated", icon: MessageSquare },
+      { title: "Motor de 5 Ângulos", url: "/content/angles", icon: Columns3 },
+      { title: "Conteúdo por Plataforma", url: "/content/platforms", icon: Megaphone },
+      { title: "Calendário de Conteúdo", url: "/content/calendar", icon: CalendarDays },
+    ],
+  },
+  {
+    label: "Inteligência de Conteúdo",
+    items: [
+      { title: "Métricas de Posts", url: "/intelligence/metrics", icon: BarChart3 },
+      { title: "Conteúdos que Viralizaram", url: "/intelligence/viral", icon: Flame },
+      { title: "Aprendizado do Sistema", url: "/intelligence/learning", icon: Brain },
+    ],
+  },
+  {
+    label: "Análise de Ferramentas",
+    items: [
+      { title: "Ferramentas Populares", url: "/tools/popular", icon: Star },
+      { title: "Reviews Negativas", url: "/tools/reviews", icon: ThumbsDown },
+      { title: "Falhas Detectadas", url: "/tools/failures", icon: Bug },
+      { title: "Conteúdos de Falhas", url: "/tools/failure-content", icon: FileWarning },
+    ],
+  },
+  {
+    label: "Laboratório SaaS",
+    items: [
+      { title: "Oportunidades de SaaS", url: "/saas/opportunities", icon: Lightbulb },
+      { title: "Ideias de Produto", url: "/saas/ideas", icon: Sparkles },
+      { title: "Criar MVP", url: "/saas/mvp", icon: Rocket },
+      { title: "Blueprint Técnico", url: "/saas/blueprint", icon: Layers },
+    ],
+  },
+  { title: "APIs Conectadas", url: "/apis", icon: Plug },
+  { title: "Como Usar o App", url: "/how-to-use", icon: HelpCircle },
 ];
+
+function isSection(item: NavItem | NavSection): item is NavSection {
+  return "label" in item;
+}
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -51,39 +132,67 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center glow-primary">
-            <Sparkles className="h-4 w-4 text-primary" />
+            <Zap className="h-4 w-4 text-primary" />
           </div>
           {!collapsed && (
             <div>
               <h2 className="text-sm font-semibold text-foreground tracking-tight">Opportunity AI</h2>
-              <p className="text-[10px] text-muted-foreground font-mono">LAB v0.1</p>
+              <p className="text-[10px] text-muted-foreground font-mono">Intelligence v2.0</p>
             </div>
           )}
         </div>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Navegação</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink
-                      to={item.url}
-                      end={item.url === "/"}
-                      className="transition-colors"
-                      activeClassName="text-primary bg-primary/10"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+      <SidebarContent className="overflow-y-auto">
+        {navSections.map((entry, i) => {
+          if (isSection(entry)) {
+            const sectionActive = entry.items.some((it) => isActive(it.url));
+            return (
+              <SidebarGroup key={entry.label}>
+                <Collapsible defaultOpen={sectionActive}>
+                  <CollapsibleTrigger className="w-full">
+                    <SidebarGroupLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/60 flex items-center justify-between cursor-pointer hover:text-muted-foreground transition-colors group">
+                      {!collapsed && entry.label}
+                      {!collapsed && <ChevronRight className="h-3 w-3 transition-transform group-data-[state=open]:rotate-90" />}
+                    </SidebarGroupLabel>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {entry.items.map((item) => (
+                          <SidebarMenuItem key={item.url}>
+                            <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                              <NavLink to={item.url} className="transition-colors" activeClassName="text-primary bg-primary/10">
+                                <item.icon className="h-4 w-4" />
+                                {!collapsed && <span className="text-xs">{item.title}</span>}
+                              </NavLink>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </CollapsibleContent>
+                </Collapsible>
+              </SidebarGroup>
+            );
+          }
+
+          return (
+            <SidebarGroup key={entry.url}>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild isActive={isActive(entry.url)}>
+                      <NavLink to={entry.url} end={entry.url === "/"} className="transition-colors" activeClassName="text-primary bg-primary/10">
+                        <entry.icon className="h-4 w-4" />
+                        {!collapsed && <span className="text-xs">{entry.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
 
         {!collapsed && (
           <SidebarGroup className="mt-auto px-4 pb-4">
@@ -92,7 +201,7 @@ export function AppSidebar() {
                 <div className="h-2 w-2 rounded-full bg-success animate-pulse-glow" />
                 <span className="text-[10px] font-mono text-muted-foreground">SISTEMA ATIVO</span>
               </div>
-              <p className="text-[10px] text-muted-foreground">7 agentes em execução · 142 tarefas na fila</p>
+              <p className="text-[10px] text-muted-foreground">Motor de inteligência em execução</p>
             </div>
             <button onClick={signOut} className="mt-2 w-full flex items-center gap-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
               <LogOut className="h-3 w-3" /> Sair

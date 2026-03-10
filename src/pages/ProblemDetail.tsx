@@ -40,7 +40,7 @@ export default function ProblemDetail() {
   if (!problem) {
     return (
       <div className="max-w-4xl space-y-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/problems")}>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/discovery/detected")}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Voltar
         </Button>
         <div className="rounded-xl border border-border bg-card p-12 text-center">
@@ -52,7 +52,7 @@ export default function ProblemDetail() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <Button variant="ghost" size="sm" onClick={() => navigate("/problems")} className="gap-2">
+      <Button variant="ghost" size="sm" onClick={() => navigate("/discovery/detected")} className="gap-2">
         <ArrowLeft className="h-4 w-4" /> Voltar aos problemas
       </Button>
 
