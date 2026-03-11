@@ -42,7 +42,7 @@ const AppRoutes = () => (
     <Route path="/" element={<P><Dashboard /></P>} />
 
     {/* Descoberta de Problemas */}
-    <Route path="/discovery/hunter" element={<P><PlaceholderPage title="Caçador de Problemas" description="Sistema de busca ativa por problemas reais em comunidades online." /></P>} />
+    <Route path="/discovery/hunter" element={<P><DiscoveryHunter /></P>} />
     <Route path="/discovery/trends" element={<P><Trends /></P>} />
     <Route path="/discovery/detected" element={<P><Problems /></P>} />
     <Route path="/discovery/detected/:id" element={<P><ProblemDetail /></P>} />
