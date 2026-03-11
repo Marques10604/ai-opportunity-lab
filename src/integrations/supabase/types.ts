@@ -126,37 +126,52 @@ export type Database = {
       }
       detected_problems: {
         Row: {
+          complaint_examples: Json | null
           created_at: string
           frequency_score: number | null
           id: string
+          impact_level: string | null
+          niche_category: string | null
           nichos: string | null
           problem_description: string | null
           problem_title: string
+          related_tools: Json | null
           source_platform: string | null
+          timing_status: string | null
           urgency_score: number | null
           user_id: string
           viral_score: number | null
         }
         Insert: {
+          complaint_examples?: Json | null
           created_at?: string
           frequency_score?: number | null
           id?: string
+          impact_level?: string | null
+          niche_category?: string | null
           nichos?: string | null
           problem_description?: string | null
           problem_title: string
+          related_tools?: Json | null
           source_platform?: string | null
+          timing_status?: string | null
           urgency_score?: number | null
           user_id: string
           viral_score?: number | null
         }
         Update: {
+          complaint_examples?: Json | null
           created_at?: string
           frequency_score?: number | null
           id?: string
+          impact_level?: string | null
+          niche_category?: string | null
           nichos?: string | null
           problem_description?: string | null
           problem_title?: string
+          related_tools?: Json | null
           source_platform?: string | null
+          timing_status?: string | null
           urgency_score?: number | null
           user_id?: string
           viral_score?: number | null

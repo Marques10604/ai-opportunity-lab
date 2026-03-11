@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import AppLayout from "@/components/AppLayout";
 import PlaceholderPage from "@/components/PlaceholderPage";
+import DiscoveryHunter from "@/pages/DiscoveryHunter";
+import OpportunityWindow from "@/pages/OpportunityWindow";
 import Dashboard from "@/pages/Dashboard";
 import Auth from "@/pages/Auth";
 import Problems from "@/pages/Problems";
@@ -40,12 +42,12 @@ const AppRoutes = () => (
     <Route path="/" element={<P><Dashboard /></P>} />
 
     {/* Descoberta de Problemas */}
-    <Route path="/discovery/hunter" element={<P><PlaceholderPage title="Caçador de Problemas" description="Sistema de busca ativa por problemas reais em comunidades online." /></P>} />
+    <Route path="/discovery/hunter" element={<P><DiscoveryHunter /></P>} />
     <Route path="/discovery/trends" element={<P><Trends /></P>} />
     <Route path="/discovery/detected" element={<P><Problems /></P>} />
     <Route path="/discovery/detected/:id" element={<P><ProblemDetail /></P>} />
     <Route path="/discovery/patterns" element={<P><Patterns /></P>} />
-    <Route path="/discovery/window" element={<P><PlaceholderPage title="Janela de Oportunidade" description="Classificação de tendências por timing: Emergente, Crescendo, Saturado." /></P>} />
+    <Route path="/discovery/window" element={<P><OpportunityWindow /></P>} />
 
     {/* Inteligência de Nichos */}
     <Route path="/niches/detected" element={<P><PlaceholderPage title="Nichos Detectados" description="Motor universal de nichos detectados em múltiplas indústrias." /></P>} />

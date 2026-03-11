@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { AlertCircle, Calendar, Crown, Flame, Globe, Lightbulb, Loader2, TrendingUp, X, Zap, Film, LayoutGrid, MessageSquare, ArrowUpDown, Eye } from "lucide-react";
+import { AlertCircle, Calendar, Crown, Flame, Globe, Lightbulb, Loader2, TrendingUp, X, Zap, Film, LayoutGrid, MessageSquare, ArrowUpDown, Eye, AlertTriangle, Tag, Clock } from "lucide-react";
 import { useDetectedProblems } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
@@ -185,43 +185,60 @@ export default function Problems() {
             >
               <div>
                 <h3 className="text-sm font-bold leading-snug">{problem.problem_title}</h3>
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-[10px] text-muted-foreground">
-                    Fonte: <span className="font-medium text-foreground">{problem.source_platform || "—"}</span>
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary text-[10px] font-medium">
+                    <Globe className="h-2.5 w-2.5" />
+                    {problem.source_platform || "—"}
                   </span>
-                  {problem.nichos && (
-                    <>
-                      <span className="text-muted-foreground/30">|</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        Indústria: <span className="font-medium text-foreground">{problem.nichos}</span>
-                      </span>
-                    </>
+                  {(problem as any).niche_category && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent/10 text-accent text-[10px] font-medium">
+                      <Tag className="h-2.5 w-2.5" />
+                      {(problem as any).niche_category}
+                    </span>
+                  )}
+                  {(problem as any).timing_status && (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                      (problem as any).timing_status === "Emergente" ? "bg-success/20 text-success" :
+                      (problem as any).timing_status === "Crescendo" ? "bg-warning/20 text-warning" :
+                      "bg-destructive/20 text-destructive"
+                    }`}>
+                      {(problem as any).timing_status === "Emergente" ? <TrendingUp className="h-2.5 w-2.5" /> :
+                       (problem as any).timing_status === "Crescendo" ? <Flame className="h-2.5 w-2.5" /> :
+                       <AlertTriangle className="h-2.5 w-2.5" />}
+                      {(problem as any).timing_status}
+                    </span>
+                  )}
+                  {(problem as any).impact_level && (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      (problem as any).impact_level === "Crítico" ? "bg-destructive/20 text-destructive" :
+                      (problem as any).impact_level === "Alto" ? "bg-warning/20 text-warning" :
+                      (problem as any).impact_level === "Médio" ? "bg-info/20 text-info" :
+                      "bg-secondary text-muted-foreground"
+                    }`}>
+                      {(problem as any).impact_level}
+                    </span>
                   )}
                 </div>
               </div>
 
               {problem.problem_description && (
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium mb-1">Problema</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{problem.problem_description}</p>
-                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{problem.problem_description}</p>
               )}
 
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-[10px]">
                   <TrendingUp className="h-3 w-3 text-primary" />
-                  <span className="text-[10px] text-muted-foreground">Freq:</span>
-                  <span className="text-[10px] font-bold font-mono">{problem.frequency_score ?? 0}</span>
+                  <span className="text-muted-foreground">Freq:</span>
+                  <span className="font-bold font-mono">{problem.frequency_score ?? 0}</span>
                 </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary text-[10px]">
                   <Zap className="h-3 w-3 text-destructive" />
-                  <span className="text-[10px] text-muted-foreground">Urg:</span>
-                  <span className="text-[10px] font-bold font-mono">{problem.urgency_score ?? 0}</span>
+                  <span className="text-muted-foreground">Urg:</span>
+                  <span className="font-bold font-mono">{problem.urgency_score ?? 0}</span>
                 </div>
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-destructive/10">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-destructive/10 text-[10px]">
                   <Flame className="h-3 w-3 text-destructive" />
-                  <span className="text-[10px] text-muted-foreground">Viral:</span>
-                  <span className="text-[10px] font-bold font-mono text-destructive">{problem.viral_score ?? 0}</span>
+                  <span className="font-bold font-mono text-destructive">{problem.viral_score ?? 0}</span>
                 </div>
               </div>
 
