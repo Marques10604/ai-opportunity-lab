@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import AppLayout from "@/components/AppLayout";
 import PlaceholderPage from "@/components/PlaceholderPage";
+import DiscoveryHunter from "@/pages/DiscoveryHunter";
+import OpportunityWindow from "@/pages/OpportunityWindow";
 import Dashboard from "@/pages/Dashboard";
 import Auth from "@/pages/Auth";
 import Problems from "@/pages/Problems";
