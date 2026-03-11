@@ -47,7 +47,7 @@ const AppRoutes = () => (
     <Route path="/discovery/detected" element={<P><Problems /></P>} />
     <Route path="/discovery/detected/:id" element={<P><ProblemDetail /></P>} />
     <Route path="/discovery/patterns" element={<P><Patterns /></P>} />
-    <Route path="/discovery/window" element={<P><PlaceholderPage title="Janela de Oportunidade" description="Classificação de tendências por timing: Emergente, Crescendo, Saturado." /></P>} />
+    <Route path="/discovery/window" element={<P><OpportunityWindow /></P>} />
 
     {/* Inteligência de Nichos */}
     <Route path="/niches/detected" element={<P><PlaceholderPage title="Nichos Detectados" description="Motor universal de nichos detectados em múltiplas indústrias." /></P>} />

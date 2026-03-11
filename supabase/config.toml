@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.detect-patterns]
 verify_jwt = false
+
+[functions.discover-problems]
+verify_jwt = false
