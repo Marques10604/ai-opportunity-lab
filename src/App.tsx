@@ -75,6 +75,9 @@ const AppRoutes = () => (
     <Route path="/intelligence/learning" element={<P><PlaceholderPage title="Aprendizado do Sistema" description="Loop de aprendizado que melhora a geração de conteúdo com base em métricas." /></P>} />
 
     {/* Análise de Ferramentas */}
+    <Route path="/tools/discovery" element={<P><ToolDiscovery /></P>} />
+    <Route path="/tools/combinations" element={<P><ToolCombinations /></P>} />
+    <Route path="/tools/solutions" element={<P><GeneratedSolutions /></P>} />
     <Route path="/tools/popular" element={<P><PlaceholderPage title="Ferramentas Populares" description="Mapeamento das ferramentas mais utilizadas no mercado." /></P>} />
     <Route path="/tools/reviews" element={<P><PlaceholderPage title="Reviews Negativas" description="Análise de reviews negativas para descobrir fraquezas de ferramentas." /></P>} />
     <Route path="/tools/failures" element={<P><PlaceholderPage title="Falhas Detectadas" description="Falhas identificadas em ferramentas populares." /></P>} />

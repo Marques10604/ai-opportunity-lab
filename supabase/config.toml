@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.discover-problems]
 verify_jwt = false
+
+[functions.discover-tools]
+verify_jwt = false

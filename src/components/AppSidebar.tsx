@@ -97,6 +97,9 @@ const navSections: (NavItem | NavSection)[] = [
   {
     label: "Análise de Ferramentas",
     items: [
+      { title: "Descoberta de Ferramentas", url: "/tools/discovery", icon: Search },
+      { title: "Combinações de Ferramentas", url: "/tools/combinations", icon: Layers },
+      { title: "Soluções Geradas", url: "/tools/solutions", icon: Rocket },
       { title: "Ferramentas Populares", url: "/tools/popular", icon: Star },
       { title: "Reviews Negativas", url: "/tools/reviews", icon: ThumbsDown },
       { title: "Falhas Detectadas", url: "/tools/failures", icon: Bug },
