@@ -61,8 +61,8 @@ const AppRoutes = () => (
     <Route path="/niches/tools" element={<P><PlaceholderPage title="Ferramentas por Nicho" description="Ferramentas mapeadas por nicho de atuação." /></P>} />
 
     {/* Conteúdo para Redes Sociais */}
-    <Route path="/content/ideas" element={<P><PlaceholderPage title="Ideias de Conteúdo" description="Geração automática de ideias de conteúdo a partir de problemas detectados." /></P>} />
-    <Route path="/content/scripts" element={<P><PlaceholderPage title="Roteiros de Vídeo" description="Roteiros estruturados com hook, problema, ferramentas, solução e resultado." /></P>} />
+    <Route path="/content/ideas" element={<P><ContentIdeas /></P>} />
+    <Route path="/content/scripts" element={<P><VideoScripts /></P>} />
     <Route path="/content/generated" element={<P><ContentOpportunities /></P>} />
     <Route path="/content/generated/:id" element={<P><ContentDetail /></P>} />
     <Route path="/content/angles" element={<P><PlaceholderPage title="Motor de 5 Ângulos" description="1 problema → 5 ângulos: Tutorial, Polêmica, Hack, Comparativo, Transformação." /></P>} />
