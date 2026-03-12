@@ -21,6 +21,12 @@ import OpportunityDetail from "@/pages/OpportunityDetail";
 import SavedPlans from "@/pages/SavedPlans";
 import Pipeline from "@/pages/Pipeline";
 import AgentMonitor from "@/pages/AgentMonitor";
+import ToolDiscovery from "@/pages/ToolDiscovery";
+import ToolCombinations from "@/pages/ToolCombinations";
+import GeneratedSolutions from "@/pages/GeneratedSolutions";
+import ContentIdeas from "@/pages/ContentIdeas";
+import VideoScripts from "@/pages/VideoScripts";
+import PlatformContent from "@/pages/PlatformContent";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,12 +61,12 @@ const AppRoutes = () => (
     <Route path="/niches/tools" element={<P><PlaceholderPage title="Ferramentas por Nicho" description="Ferramentas mapeadas por nicho de atuação." /></P>} />
 
     {/* Conteúdo para Redes Sociais */}
-    <Route path="/content/ideas" element={<P><PlaceholderPage title="Ideias de Conteúdo" description="Geração automática de ideias de conteúdo a partir de problemas detectados." /></P>} />
-    <Route path="/content/scripts" element={<P><PlaceholderPage title="Roteiros de Vídeo" description="Roteiros estruturados com hook, problema, ferramentas, solução e resultado." /></P>} />
+    <Route path="/content/ideas" element={<P><ContentIdeas /></P>} />
+    <Route path="/content/scripts" element={<P><VideoScripts /></P>} />
     <Route path="/content/generated" element={<P><ContentOpportunities /></P>} />
     <Route path="/content/generated/:id" element={<P><ContentDetail /></P>} />
     <Route path="/content/angles" element={<P><PlaceholderPage title="Motor de 5 Ângulos" description="1 problema → 5 ângulos: Tutorial, Polêmica, Hack, Comparativo, Transformação." /></P>} />
-    <Route path="/content/platforms" element={<P><PlaceholderPage title="Conteúdo por Plataforma" description="Conteúdo otimizado para Instagram, TikTok, LinkedIn, X e YouTube Shorts." /></P>} />
+    <Route path="/content/platforms" element={<P><PlatformContent /></P>} />
     <Route path="/content/calendar" element={<P><PlaceholderPage title="Calendário de Conteúdo" description="Planejamento visual de publicações por plataforma." /></P>} />
 
     {/* Inteligência de Conteúdo */}
@@ -69,6 +75,9 @@ const AppRoutes = () => (
     <Route path="/intelligence/learning" element={<P><PlaceholderPage title="Aprendizado do Sistema" description="Loop de aprendizado que melhora a geração de conteúdo com base em métricas." /></P>} />
 
     {/* Análise de Ferramentas */}
+    <Route path="/tools/discovery" element={<P><ToolDiscovery /></P>} />
+    <Route path="/tools/combinations" element={<P><ToolCombinations /></P>} />
+    <Route path="/tools/solutions" element={<P><GeneratedSolutions /></P>} />
     <Route path="/tools/popular" element={<P><PlaceholderPage title="Ferramentas Populares" description="Mapeamento das ferramentas mais utilizadas no mercado." /></P>} />
     <Route path="/tools/reviews" element={<P><PlaceholderPage title="Reviews Negativas" description="Análise de reviews negativas para descobrir fraquezas de ferramentas." /></P>} />
     <Route path="/tools/failures" element={<P><PlaceholderPage title="Falhas Detectadas" description="Falhas identificadas em ferramentas populares." /></P>} />
