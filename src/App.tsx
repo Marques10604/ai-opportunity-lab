@@ -66,7 +66,7 @@ const AppRoutes = () => (
     <Route path="/content/generated" element={<P><ContentOpportunities /></P>} />
     <Route path="/content/generated/:id" element={<P><ContentDetail /></P>} />
     <Route path="/content/angles" element={<P><PlaceholderPage title="Motor de 5 Ângulos" description="1 problema → 5 ângulos: Tutorial, Polêmica, Hack, Comparativo, Transformação." /></P>} />
-    <Route path="/content/platforms" element={<P><PlaceholderPage title="Conteúdo por Plataforma" description="Conteúdo otimizado para Instagram, TikTok, LinkedIn, X e YouTube Shorts." /></P>} />
+    <Route path="/content/platforms" element={<P><PlatformContent /></P>} />
     <Route path="/content/calendar" element={<P><PlaceholderPage title="Calendário de Conteúdo" description="Planejamento visual de publicações por plataforma." /></P>} />
 
     {/* Inteligência de Conteúdo */}
