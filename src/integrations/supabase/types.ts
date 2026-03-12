@@ -409,6 +409,56 @@ export type Database = {
         }
         Relationships: []
       }
+      tool_combinations: {
+        Row: {
+          content_idea: string | null
+          created_at: string
+          expected_result: string | null
+          id: string
+          innovation_score: number | null
+          solution_description: string | null
+          solution_name: string
+          source_problem_id: string | null
+          tools_used: Json
+          user_id: string
+          video_script: Json | null
+        }
+        Insert: {
+          content_idea?: string | null
+          created_at?: string
+          expected_result?: string | null
+          id?: string
+          innovation_score?: number | null
+          solution_description?: string | null
+          solution_name: string
+          source_problem_id?: string | null
+          tools_used?: Json
+          user_id: string
+          video_script?: Json | null
+        }
+        Update: {
+          content_idea?: string | null
+          created_at?: string
+          expected_result?: string | null
+          id?: string
+          innovation_score?: number | null
+          solution_description?: string | null
+          solution_name?: string
+          source_problem_id?: string | null
+          tools_used?: Json
+          user_id?: string
+          video_script?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tool_combinations_source_problem_id_fkey"
+            columns: ["source_problem_id"]
+            isOneToOne: false
+            referencedRelation: "detected_problems"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tools: {
         Row: {
           category: string | null
