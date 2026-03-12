@@ -21,6 +21,12 @@ import OpportunityDetail from "@/pages/OpportunityDetail";
 import SavedPlans from "@/pages/SavedPlans";
 import Pipeline from "@/pages/Pipeline";
 import AgentMonitor from "@/pages/AgentMonitor";
+import ToolDiscovery from "@/pages/ToolDiscovery";
+import ToolCombinations from "@/pages/ToolCombinations";
+import GeneratedSolutions from "@/pages/GeneratedSolutions";
+import ContentIdeas from "@/pages/ContentIdeas";
+import VideoScripts from "@/pages/VideoScripts";
+import PlatformContent from "@/pages/PlatformContent";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
