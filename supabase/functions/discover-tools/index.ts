@@ -35,7 +35,6 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Extract user from JWT
     let userId: string | null = null;
     if (authHeader) {
       const token = authHeader.replace("Bearer ", "");
@@ -50,15 +49,28 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "system",
-            content: `Você é um especialista em descoberta de ferramentas de software e combinação de soluções. 
-Analise o problema descrito e:
-1. Descubra 4-6 ferramentas reais que poderiam resolver ou aliviar o problema
-2. Crie 2-3 combinações inovadoras dessas ferramentas em soluções completas
-3. Para cada combinação, gere uma ideia de conteúdo e um roteiro de vídeo curto
+            content: `Você é um especialista em descoberta de ferramentas modernas de AI e desenvolvimento de software.
+
+Analise o problema detectado e:
+1. Descubra 4-6 ferramentas MODERNAS e REAIS que resolvem o problema. Priorize:
+   - Ferramentas de AI (Claude/Anthropic, Google AI, OpenAI, Cursor, etc.)
+   - Plataformas de desenvolvimento (Vercel, Supabase, Railway, etc.)
+   - Ferramentas open source de AI (LangChain, CrewAI, AutoGen, etc.)
+   - APIs e SDKs modernos
+   - Frameworks de automação (n8n, Make, Zapier, etc.)
+   - Plataformas cloud (AWS, GCP, Azure)
+   Evite ferramentas obsoletas.
+
+2. Crie 2-3 combinações inovadoras dessas ferramentas em soluções completas.
+
+3. Para cada combinação, gere:
+   - Ideia de conteúdo para redes sociais
+   - Roteiro de vídeo curto (Hook, Problema, Ferramentas, Solução, Resultado)
+   - Ideia de negócio AI-First escalável
 
 As ferramentas devem ser reais (GitHub repos, SaaS, APIs, open source).
 As combinações devem ser criativas e práticas.
@@ -67,12 +79,12 @@ Use a tool fornecida para retornar dados estruturados.`,
           },
           {
             role: "user",
-            content: `Problema detectado:
+            content: `Problema detectado no sistema de descoberta:
 Título: ${problem_title}
 Descrição: ${problem_description || "N/A"}
 Nicho: ${niche_category || "Geral"}
 
-Descubra ferramentas que resolvem este problema e crie combinações poderosas de ferramentas.`,
+Descubra ferramentas modernas de AI e desenvolvimento que resolvem este problema. Crie combinações poderosas e gere ideias de negócio AI-First.`,
           },
         ],
         tools: [
@@ -80,7 +92,7 @@ Descubra ferramentas que resolvem este problema e crie combinações poderosas d
             type: "function",
             function: {
               name: "return_tool_discovery",
-              description: "Retorna ferramentas descobertas e combinações de soluções.",
+              description: "Retorna ferramentas descobertas, combinações de soluções e ideias de negócio AI-First.",
               parameters: {
                 type: "object",
                 properties: {
@@ -90,7 +102,7 @@ Descubra ferramentas que resolvem este problema e crie combinações poderosas d
                       type: "object",
                       properties: {
                         tool_name: { type: "string" },
-                        category: { type: "string", enum: ["SaaS", "API", "Open Source", "Automação", "Framework", "Plataforma"] },
+                        category: { type: "string", enum: ["AI Tools", "Developer Tools", "APIs", "Cloud Platforms", "Automation Frameworks", "Open Source Tools"] },
                         description: { type: "string" },
                         use_case: { type: "string" },
                         website: { type: "string" },
@@ -105,10 +117,7 @@ Descubra ferramentas que resolvem este problema e crie combinações poderosas d
                       type: "object",
                       properties: {
                         solution_name: { type: "string" },
-                        tools_used: {
-                          type: "array",
-                          items: { type: "string" },
-                        },
+                        tools_used: { type: "array", items: { type: "string" } },
                         solution_description: { type: "string" },
                         expected_result: { type: "string" },
                         innovation_score: { type: "number", description: "Score de 1 a 100" },
@@ -125,8 +134,22 @@ Descubra ferramentas que resolvem este problema e crie combinações poderosas d
                           required: ["hook", "problem", "tools_demo", "solution", "result"],
                           additionalProperties: false,
                         },
+                        business_idea: {
+                          type: "object",
+                          properties: {
+                            nome: { type: "string", description: "Nome da ideia de negócio" },
+                            descricao_produto: { type: "string", description: "Descrição do produto/serviço" },
+                            infraestrutura: { type: "string", description: "Infraestrutura tecnológica necessária" },
+                            stack_ferramentas: { type: "array", items: { type: "string" }, description: "Stack de ferramentas" },
+                            monetizacao: { type: "string", description: "Modelo de monetização" },
+                            diferencial_ai: { type: "string", description: "Diferencial AI-First" },
+                            potencial_escala: { type: "string", description: "Potencial de escala" },
+                          },
+                          required: ["nome", "descricao_produto", "infraestrutura", "stack_ferramentas", "monetizacao", "diferencial_ai", "potencial_escala"],
+                          additionalProperties: false,
+                        },
                       },
-                      required: ["solution_name", "tools_used", "solution_description", "expected_result", "innovation_score", "content_idea", "video_script"],
+                      required: ["solution_name", "tools_used", "solution_description", "expected_result", "innovation_score", "content_idea", "video_script", "business_idea"],
                       additionalProperties: false,
                     },
                   },
@@ -195,6 +218,7 @@ Descubra ferramentas que resolvem este problema e crie combinações poderosas d
         innovation_score: c.innovation_score,
         content_idea: c.content_idea,
         video_script: c.video_script,
+        business_idea: c.business_idea,
       }));
       await supabase.from("tool_combinations").insert(comboRows);
     }
