@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search, Loader2, AlertTriangle, Globe, MessageSquare,
   Zap, TrendingUp, Flame, Tag, Wrench, ChevronDown, ChevronUp,
-  Filter, Layers, ArrowRight, Lightbulb, Film, Sparkles, ExternalLink
+  Filter, Layers, ArrowRight, Lightbulb, Film, Sparkles, ExternalLink, Database, CheckCircle2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,6 +45,7 @@ export default function OpportunityRadar() {
   const [selectedNiche, setSelectedNiche] = useState("Todos");
   const [hunting, setHunting] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [scanStep, setScanStep] = useState(0);
   const { data: problems = [], isLoading: loadingProblems } = useDetectedProblems();
 
   // Selected Problem & Discovery Pipeline State
@@ -63,9 +64,15 @@ export default function OpportunityRadar() {
     if (!user) return;
     setHunting(true);
     setHasSearched(true);
+    setScanStep(0);
     // Clear previously selected problem when hunting anew
     setSelectedProblem(null);
     setDiscoveryResult(null);
+
+    // Simulate scanning steps progressively
+    const interval = setInterval(() => {
+      setScanStep((prev) => (prev < 4 ? prev + 1 : prev));
+    }, 2000);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -88,7 +95,12 @@ export default function OpportunityRadar() {
       console.error(err);
       toast.error(err?.message || "Erro ao caçar problemas");
     } finally {
-      setHunting(false);
+      clearInterval(interval);
+      setScanStep(4);
+      setTimeout(() => {
+        setHunting(false);
+        setScanStep(0);
+      }, 1000);
     }
   };
 
@@ -192,61 +204,119 @@ export default function OpportunityRadar() {
         </div>
 
         {/* List detected problems for selected niche */}
-        <div className="space-y-4">
-           <div className="flex items-center gap-2">
-             <AlertTriangle className="h-4 w-4 text-warning" />
-             <span className="text-sm font-semibold">2. Problemas Detectados</span>
-             {filteredProblems.length > 0 && (
-               <Badge variant="secondary" className="ml-2 text-[10px]">{filteredProblems.length}</Badge>
-             )}
-           </div>
+        {hunting ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 pt-4 pb-8">
+            <div className="text-center space-y-2 mb-8">
+              <div className="mx-auto w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center glow-primary mb-3">
+                <Search className="h-5 w-5 text-primary animate-pulse" />
+              </div>
+              <h3 className="text-lg font-bold">Motor de Descoberta Ativo</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Analisando discussões reais no Reddit, Hacker News, Product Hunt e outras comunidades para encontrar dores latentes.
+              </p>
+            </div>
 
-           {loadingProblems ? (
-             <div className="flex items-center gap-3 text-sm text-muted-foreground p-8 justify-center border border-dashed rounded-lg">
-               <Loader2 className="h-5 w-5 animate-spin" /> Carregando base de problemas...
+            <div className="max-w-3xl mx-auto rounded-xl border border-border bg-card p-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-2 relative">
+                {/* Visual Pipeline */}
+                <div className="hidden sm:block absolute top-[28px] left-[10%] right-[10%] h-0.5 bg-secondary pointer-events-none" />
+                
+                {[
+                  { icon: Globe, label: "Escaneando Internet" },
+                  { icon: Database, label: "Coletando Discussões" },
+                  { icon: Search, label: "Detectando Problemas" },
+                  { icon: Tag, label: "Analisando Padrões" },
+                  { icon: Sparkles, label: "Gerando Oportunidades" }
+                ].map((step, idx) => {
+                  const isActive = scanStep === idx;
+                  const isPast = scanStep > idx;
+                  const isFuture = scanStep < idx;
+
+                  return (
+                    <div key={idx} className="flex flex-col items-center gap-3 relative z-10">
+                      <motion.div
+                        animate={{ 
+                          scale: isActive ? 1.1 : 1,
+                        }}
+                        className={`h-11 w-11 rounded-full flex items-center justify-center border-2 transition-all duration-500
+                          ${isPast ? "bg-primary border-primary text-primary-foreground" : 
+                            isActive ? "bg-primary/20 border-primary text-primary shadow-[0_0_15px_rgba(var(--primary),0.3)]" : 
+                            "bg-card border-border text-muted-foreground"}`}
+                      >
+                        {isPast ? (
+                           <CheckCircle2 className="h-5 w-5" />
+                        ) : (
+                           <step.icon className={`h-5 w-5 ${isActive ? "animate-pulse" : ""}`} />
+                        )}
+                      </motion.div>
+                      <span className={`text-[10px] font-bold uppercase tracking-wider text-center max-w-[90px] transition-colors duration-500
+                        ${isActive ? "text-primary" : isPast ? "text-foreground" : "text-muted-foreground/50"}`}
+                      >
+                        {step.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <div className="space-y-4">
+             <div className="flex items-center gap-2">
+               <AlertTriangle className="h-4 w-4 text-warning" />
+               <span className="text-sm font-semibold">2. Problemas Detectados</span>
+               {filteredProblems.length > 0 && (
+                 <Badge variant="secondary" className="ml-2 text-[10px]">{filteredProblems.length}</Badge>
+               )}
              </div>
-           ) : filteredProblems.length === 0 ? (
-             <div className="text-center p-8 border border-dashed rounded-lg">
-                <p className="text-sm text-muted-foreground">Nenhum problema detectado para "{selectedNiche}".</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Clique em "Buscar Novos Problemas" para iniciar varredura.</p>
-             </div>
-           ) : (
-             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-2 pb-2">
-               {filteredProblems.map((p) => {
-                 const isSelected = selectedProblem === p.id;
-                 return (
-                   <button
-                     key={p.id}
-                     onClick={() => handleSelectProblem(p.id)}
-                     disabled={discovering && isSelected}
-                     className={`text-left flex flex-col p-4 rounded-xl border transition-all ${
-                       isSelected
-                         ? "border-primary bg-primary/5 ring-1 ring-primary/30"
-                         : "border-border bg-card hover:bg-secondary/40 hover:border-primary/40"
-                     }`}
-                   >
-                     <div className="flex justify-between items-start gap-2 mb-2 w-full">
-                       <p className="font-semibold text-sm line-clamp-2 leading-tight flex-1">{p.problem_title}</p>
-                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${IMPACT_COLORS[p.impact_level] || "bg-secondary"}`}>
-                         {p.impact_level || "Desconhecido"}
-                       </span>
-                     </div>
-                     <p className="text-xs text-muted-foreground line-clamp-2 mb-3 flex-1">{p.problem_description}</p>
-                     
-                     <div className="flex items-center gap-2 mt-auto pt-2 border-t border-border/50 w-full">
-                        <Badge variant="outline" className="text-[10px] font-normal gap-1">
-                          <Globe className="h-3 w-3" /> {p.source_platform}
-                        </Badge>
-                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto bg-secondary px-1.5 py-0.5 rounded">
-                          <Flame className="h-3 w-3 text-destructive" /> {p.viral_score}
-                        </div>
-                     </div>
-                   </button>
-                 );
-               })}
-             </div>
-           )}
-        </div>
+
+             {loadingProblems ? (
+               <div className="flex items-center gap-3 text-sm text-muted-foreground p-8 justify-center border border-dashed rounded-lg">
+                 <Loader2 className="h-5 w-5 animate-spin" /> Carregando base de problemas...
+               </div>
+             ) : filteredProblems.length === 0 ? (
+               <div className="text-center p-8 border border-dashed rounded-lg">
+                  <p className="text-sm text-muted-foreground">Nenhum problema detectado para "{selectedNiche}".</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Clique em "Buscar Novos Problemas" para iniciar varredura.</p>
+               </div>
+             ) : (
+               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[400px] overflow-y-auto pr-2 pb-2">
+                 {filteredProblems.map((p) => {
+                   const isSelected = selectedProblem === p.id;
+                   return (
+                     <button
+                       key={p.id}
+                       onClick={() => handleSelectProblem(p.id)}
+                       disabled={discovering && isSelected}
+                       className={`text-left flex flex-col p-4 rounded-xl border transition-all ${
+                         isSelected
+                           ? "border-primary bg-primary/5 ring-1 ring-primary/30"
+                           : "border-border bg-card hover:bg-secondary/40 hover:border-primary/40"
+                       }`}
+                     >
+                       <div className="flex justify-between items-start gap-2 mb-2 w-full">
+                         <p className="font-semibold text-sm line-clamp-2 leading-tight flex-1">{p.problem_title}</p>
+                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${IMPACT_COLORS[p.impact_level] || "bg-secondary"}`}>
+                           {p.impact_level || "Desconhecido"}
+                         </span>
+                       </div>
+                       <p className="text-xs text-muted-foreground line-clamp-2 mb-3 flex-1">{p.problem_description}</p>
+                       
+                       <div className="flex items-center gap-2 mt-auto pt-2 border-t border-border/50 w-full">
+                          <Badge variant="outline" className="text-[10px] font-normal gap-1">
+                            <Globe className="h-3 w-3" /> {p.source_platform}
+                          </Badge>
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground ml-auto bg-secondary px-1.5 py-0.5 rounded">
+                            <Flame className="h-3 w-3 text-destructive" /> {p.viral_score}
+                          </div>
+                       </div>
+                     </button>
+                   );
+                 })}
+               </div>
+             )}
+          </div>
+        )}
       </motion.div>
 
       {/* Loading State for Pipeline */}
