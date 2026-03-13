@@ -158,6 +158,30 @@ export default function OpportunityRadar() {
         <p className="text-base text-muted-foreground mt-2">
           Selecione um nicho, liste problemas latentes e gere automaticamente o pipeline completo de soluções e conteúdo.
         </p>
+
+        {/* Explanatory Static Flow Header */}
+        <div className="mt-6 p-4 rounded-xl border border-dashed border-border/60 bg-secondary/30 flex items-center justify-center sm:justify-start gap-2 sm:gap-4 overflow-x-auto text-[10px] sm:text-xs">
+          <span className="text-muted-foreground/70 font-medium whitespace-nowrap">Como funciona:</span>
+          
+          <div className="flex items-center gap-1.5 sm:gap-2 text-muted-foreground/80 whitespace-nowrap">
+            <span className="font-semibold flex items-center gap-1"><Search className="h-3 w-3" /> Detectar Problema</span>
+            <ArrowRight className="h-3 w-3 opacity-50" />
+            
+            <span className="font-semibold flex items-center gap-1"><Wrench className="h-3 w-3" /> Descobrir Ferramentas</span>
+            <ArrowRight className="h-3 w-3 opacity-50" />
+            
+            <span className="font-semibold flex items-center gap-1"><Layers className="h-3 w-3" /> Combinar Soluções</span>
+            <ArrowRight className="h-3 w-3 opacity-50" />
+            
+            <span className="font-semibold flex items-center gap-1"><Lightbulb className="h-3 w-3" /> Criar Conteúdo</span>
+            <ArrowRight className="h-3 w-3 opacity-50" />
+            
+            <span className="font-semibold flex items-center gap-1"><Film className="h-3 w-3" /> Gerar Roteiro</span>
+            <ArrowRight className="h-3 w-3 opacity-50" />
+            
+            <span className="font-semibold flex items-center gap-1"><Sparkles className="h-3 w-3 text-primary/60" /> Criar Negócio AI</span>
+          </div>
+        </div>
       </div>
 
       {/* STEP 1 & 2: Niche Selection and Problem Detection */}
