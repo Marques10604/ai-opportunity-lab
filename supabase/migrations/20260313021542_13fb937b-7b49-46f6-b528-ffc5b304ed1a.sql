@@ -1,0 +1,1 @@
+ALTER TABLE public.tool_combinations ADD COLUMN IF NOT EXISTS business_idea jsonb DEFAULT '{}'::jsonb;

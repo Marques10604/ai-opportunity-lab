@@ -411,6 +411,7 @@ export type Database = {
       }
       tool_combinations: {
         Row: {
+          business_idea: Json | null
           content_idea: string | null
           created_at: string
           expected_result: string | null
@@ -424,6 +425,7 @@ export type Database = {
           video_script: Json | null
         }
         Insert: {
+          business_idea?: Json | null
           content_idea?: string | null
           created_at?: string
           expected_result?: string | null
@@ -437,6 +439,7 @@ export type Database = {
           video_script?: Json | null
         }
         Update: {
+          business_idea?: Json | null
           content_idea?: string | null
           created_at?: string
           expected_result?: string | null
