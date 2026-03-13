@@ -168,6 +168,43 @@ export default function GeneratedSolutions() {
                           </div>
                         )}
 
+                        {/* AI-First Business Idea */}
+                        {(() => {
+                          const bi = typeof combo.business_idea === 'object' ? combo.business_idea : {};
+                          if (!bi?.nome) return null;
+                          return (
+                            <div className="rounded-xl border border-accent/30 bg-accent/5 p-4 space-y-3">
+                              <div className="flex items-center gap-2">
+                                <Brain className="h-4 w-4 text-accent" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-accent">Ideia de Negócio AI-First</span>
+                              </div>
+                              <h4 className="text-sm font-bold">{bi.nome}</h4>
+                              <p className="text-xs text-foreground/80">{bi.descricao_produto}</p>
+                              <div className="grid sm:grid-cols-2 gap-3">
+                                {bi.infraestrutura && (
+                                  <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium flex items-center gap-1"><Server className="h-3 w-3" /> Infraestrutura</p><p className="text-xs text-foreground/80">{bi.infraestrutura}</p></div>
+                                )}
+                                {bi.monetizacao && (
+                                  <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium flex items-center gap-1"><DollarSign className="h-3 w-3" /> Monetização</p><p className="text-xs text-foreground/80">{bi.monetizacao}</p></div>
+                                )}
+                                {bi.diferencial_ai && (
+                                  <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium flex items-center gap-1"><Rocket className="h-3 w-3" /> Diferencial AI</p><p className="text-xs text-foreground/80">{bi.diferencial_ai}</p></div>
+                                )}
+                                {bi.potencial_escala && (
+                                  <div><p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Escala</p><p className="text-xs text-foreground/80">{bi.potencial_escala}</p></div>
+                                )}
+                              </div>
+                              {bi.stack_ferramentas?.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {bi.stack_ferramentas.map((t: string, k: number) => (
+                                    <span key={k} className="px-2 py-0.5 rounded-md bg-accent/10 text-accent text-[10px] font-semibold">{t}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
                         <div className="text-[10px] text-muted-foreground/50">
                           Gerado em {new Date(combo.created_at).toLocaleDateString("pt-BR")}
                         </div>
