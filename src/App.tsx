@@ -24,6 +24,7 @@ import AgentMonitor from "@/pages/AgentMonitor";
 import ToolDiscovery from "@/pages/ToolDiscovery";
 import ToolCombinations from "@/pages/ToolCombinations";
 import GeneratedSolutions from "@/pages/GeneratedSolutions";
+import OpportunityRadar from "@/pages/OpportunityRadar";
 import ContentIdeas from "@/pages/ContentIdeas";
 import VideoScripts from "@/pages/VideoScripts";
 import PlatformContent from "@/pages/PlatformContent";
@@ -47,8 +48,9 @@ const AppRoutes = () => (
     <Route path="/auth" element={<Auth />} />
     <Route path="/" element={<P><Dashboard /></P>} />
 
-    {/* Descoberta de Problemas */}
-    <Route path="/discovery/hunter" element={<P><DiscoveryHunter /></P>} />
+    {/* Descoberta de Problemas & Radar */}
+    <Route path="/radar" element={<P><OpportunityRadar /></P>} />
+    
     <Route path="/discovery/trends" element={<P><Trends /></P>} />
     <Route path="/discovery/detected" element={<P><Problems /></P>} />
     <Route path="/discovery/detected/:id" element={<P><ProblemDetail /></P>} />
@@ -75,7 +77,6 @@ const AppRoutes = () => (
     <Route path="/intelligence/learning" element={<P><PlaceholderPage title="Aprendizado do Sistema" description="Loop de aprendizado que melhora a geração de conteúdo com base em métricas." /></P>} />
 
     {/* Análise de Ferramentas */}
-    <Route path="/tools/discovery" element={<P><ToolDiscovery /></P>} />
     <Route path="/tools/combinations" element={<P><ToolCombinations /></P>} />
     <Route path="/tools/solutions" element={<P><GeneratedSolutions /></P>} />
     <Route path="/tools/popular" element={<P><PlaceholderPage title="Ferramentas Populares" description="Mapeamento das ferramentas mais utilizadas no mercado." /></P>} />
@@ -97,6 +98,8 @@ const AppRoutes = () => (
     {/* Legacy redirects */}
     <Route path="/pipeline" element={<Navigate to="/" replace />} />
     <Route path="/agents" element={<Navigate to="/" replace />} />
+    <Route path="/discovery/hunter" element={<Navigate to="/radar" replace />} />
+    <Route path="/tools/discovery" element={<Navigate to="/radar" replace />} />
     <Route path="/problems" element={<Navigate to="/discovery/detected" replace />} />
     <Route path="/problems/:id" element={<Navigate to="/discovery/detected" replace />} />
     <Route path="/patterns" element={<Navigate to="/discovery/patterns" replace />} />

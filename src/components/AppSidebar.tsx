@@ -57,24 +57,7 @@ type NavSection = { label: string; items: NavItem[] };
 
 const navSections: (NavItem | NavSection)[] = [
   { title: "Painel", url: "/", icon: LayoutDashboard },
-  {
-    label: "Descoberta de Problemas",
-    items: [
-      { title: "Caçador de Problemas", url: "/discovery/hunter", icon: Search },
-      { title: "Tendências da Internet", url: "/discovery/trends", icon: TrendingUp },
-      { title: "Problemas Detectados", url: "/discovery/detected", icon: AlertCircle },
-      { title: "Padrões de Problemas", url: "/discovery/patterns", icon: Network },
-      { title: "Janela de Oportunidade", url: "/discovery/window", icon: Clock },
-    ],
-  },
-  {
-    label: "Inteligência de Nichos",
-    items: [
-      { title: "Nichos Detectados", url: "/niches/detected", icon: Target },
-      { title: "Dores por Nicho", url: "/niches/pains", icon: AlertCircle },
-      { title: "Ferramentas por Nicho", url: "/niches/tools", icon: Wrench },
-    ],
-  },
+  { title: "Radar de Oportunidades", url: "/radar", icon: Search },
   {
     label: "Conteúdo para Redes Sociais",
     items: [
@@ -87,26 +70,7 @@ const navSections: (NavItem | NavSection)[] = [
     ],
   },
   {
-    label: "Inteligência de Conteúdo",
-    items: [
-      { title: "Métricas de Posts", url: "/intelligence/metrics", icon: BarChart3 },
-      { title: "Conteúdos que Viralizaram", url: "/intelligence/viral", icon: Flame },
-      { title: "Aprendizado do Sistema", url: "/intelligence/learning", icon: Brain },
-    ],
-  },
-  {
-    label: "Análise de Ferramentas",
-    items: [
-      { title: "Descoberta de Ferramentas", url: "/tools/discovery", icon: Search },
-      { title: "Combinações de Ferramentas", url: "/tools/combinations", icon: Layers },
-      { title: "Soluções Geradas", url: "/tools/solutions", icon: Rocket },
-      { title: "Ferramentas Populares", url: "/tools/popular", icon: Star },
-      { title: "Reviews Negativas", url: "/tools/reviews", icon: ThumbsDown },
-      { title: "Falhas Detectadas", url: "/tools/failures", icon: Bug },
-      { title: "Conteúdos de Falhas", url: "/tools/failure-content", icon: FileWarning },
-    ],
-  },
-  {
+
     label: "Laboratório SaaS",
     items: [
       { title: "Oportunidades de SaaS", url: "/saas/opportunities", icon: Lightbulb },
