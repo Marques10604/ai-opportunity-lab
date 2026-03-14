@@ -32,6 +32,7 @@ import {
   Plug,
   HelpCircle,
   ChevronRight,
+  Bot,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NavLink } from "@/components/NavLink";
@@ -70,13 +71,18 @@ const navSections: (NavItem | NavSection)[] = [
     ],
   },
   {
-
     label: "Laboratório SaaS",
     items: [
       { title: "Oportunidades de SaaS", url: "/saas/opportunities", icon: Lightbulb },
       { title: "Ideias de Produto", url: "/saas/ideas", icon: Sparkles },
       { title: "Criar MVP", url: "/saas/mvp", icon: Rocket },
       { title: "Blueprint Técnico", url: "/saas/blueprint", icon: Layers },
+    ],
+  },
+  {
+    label: "Ecossistema Anthropic",
+    items: [
+      { title: "Configuração do Projeto", url: "/project-setup", icon: Bot },
     ],
   },
   { title: "APIs Conectadas", url: "/apis", icon: Plug },
