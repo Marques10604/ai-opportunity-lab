@@ -28,6 +28,7 @@ import OpportunityRadar from "@/pages/OpportunityRadar";
 import ContentIdeas from "@/pages/ContentIdeas";
 import VideoScripts from "@/pages/VideoScripts";
 import PlatformContent from "@/pages/PlatformContent";
+import ProjectSetup from "@/pages/ProjectSetup";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
