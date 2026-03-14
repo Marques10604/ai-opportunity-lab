@@ -79,6 +79,12 @@ const navSections: (NavItem | NavSection)[] = [
       { title: "Blueprint Técnico", url: "/saas/blueprint", icon: Layers },
     ],
   },
+  {
+    label: "Ecossistema Anthropic",
+    items: [
+      { title: "Project Setup", url: "/project-setup", icon: Cpu },
+    ],
+  },
   { title: "APIs Conectadas", url: "/apis", icon: Plug },
   { title: "Como Usar o App", url: "/how-to-use", icon: HelpCircle },
 ];
