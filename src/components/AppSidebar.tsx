@@ -32,6 +32,7 @@ import {
   Plug,
   HelpCircle,
   ChevronRight,
+  Bot,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NavLink } from "@/components/NavLink";
