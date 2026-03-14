@@ -1,5 +1,35 @@
+import { useState } from "react";
+import { 
+  Github, 
+  Link as LinkIcon, 
+  Cpu, 
+  FileText, 
+  Sparkles, 
+  CheckCircle2, 
+  Loader2, 
+  Terminal, 
+  Download, 
+  FileCode, 
+  ChevronUp, 
+  ChevronDown, 
+  Info 
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
+import JSZip from "jszip";
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Github, Link as LinkIcon } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // File descriptions for tooltips
 const FILE_DESCRIPTIONS: Record<string, string> = {
@@ -41,74 +71,195 @@ export default function ProjectSetup() {
     setExpandedFiles((prev) => ({ ...prev, [fileName]: !prev[fileName] }));
   };
 
-  const callAI = async (systemPrompt: string, userPrompt: string) => {
-    const LOVABLE_API_KEY = (import.meta as any).env.VITE_LOVABLE_API_KEY || "";
+  const callAI = async (prompt: string) => {
+    const GEMINI_API_KEY = (import.meta as any).env.VITE_GEMINI_API_KEY || "";
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error("VITE_LOVABLE_API_KEY não configurada no ambiente.");
+    if (!GEMINI_API_KEY) {
+      throw new Error("VITE_GEMINI_API_KEY não configurada no ambiente.");
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.0-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_claude_package",
-              description: "Retorna o conteúdo de 8 arquivos para o pacote Claude Code.",
-              parameters: {
-                type: "object",
-                properties: {
-                  files: {
-                    type: "object",
-                    properties: {
-                      "CLAUDE.md": { type: "string" },
-                      "README.md": { type: "string" },
-                      "features.md": { type: "string" },
-                      "roadmap.md": { type: "string" },
-                      "ARCHITECTURE.md": { type: "string" },
-                      "TECH_STACK.md": { type: "string" },
-                      ".claude/commands/deploy.md": { type: "string" },
-                      ".gitignore": { type: "string" },
-                    },
-                    required: [
-                      "CLAUDE.md", "README.md", "features.md", "roadmap.md", 
-                      "ARCHITECTURE.md", "TECH_STACK.md", ".claude/commands/deploy.md", ".gitignore"
-                    ],
-                  },
-                },
-                required: ["files"],
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "return_claude_package" } },
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ 
+            parts: [{ 
+              text: `SYSTEM INSTRUCTIONS:
+You are an expert Claude Code project architect. Your job is to generate 8 precise, production-ready documentation files that help Claude Code understand a project deeply without any additional explanation from the user.
+
+QUALITY RULES — every file must follow these:
+- No placeholders. No "add your content here". Real content only.
+- No generic descriptions. Every sentence must be specific to this project.
+- Minimum 300 characters per file.
+- Technical and direct. Claude Code reads these files, not humans.
+
+REFERENCE EXAMPLES of excellent files:
+
+--- CLAUDE.md EXAMPLE ---
+# CLAUDE.md — AI Opportunity Lab
+
+## Project Overview
+Market intelligence engine that discovers real pain points from Reddit, HN, GitHub and generates Problem→Tool→Solution content for Instagram and TikTok.
+
+## Essential Commands
+- npm run dev → start local server at localhost:5173
+- npm run build → production build
+- npx supabase functions serve → run edge functions locally
+- npx supabase functions deploy <name> → deploy single function
+
+## Architecture Rules
+- Frontend: React + TypeScript + Tailwind in /src
+- Backend: Supabase Edge Functions in /supabase/functions (Deno runtime)
+- Database: Supabase PostgreSQL — never modify schema directly, always use migrations
+- State: React Query for server state, useState for local UI state
+
+## What Claude Should NEVER Do
+- Never modify /supabase/migrations directly
+- Never install packages without checking package.json first
+- Never use fetch() in components — always use Supabase client or Edge Functions
+- Never hardcode API keys — always use environment variables
+
+## Folder Structure
+/src/pages → full page components
+/src/components → reusable UI components
+/src/components/ui → shadcn base components, never modify
+/src/lib → utility functions and helpers
+/src/hooks → custom React hooks
+/src/integrations/supabase → Supabase client and types
+/supabase/functions → Edge Functions (Deno)
+/supabase/migrations → SQL migrations
+
+--- README.md EXAMPLE ---
+# AI Opportunity Lab
+
+Market intelligence engine that discovers real pain points from online communities and generates structured content for social media.
+
+## Tech Stack
+- React 18 + TypeScript + Vite
+- Tailwind CSS + shadcn/ui
+- Supabase (PostgreSQL + Edge Functions + Auth)
+- Deno (Edge Functions runtime)
+
+## Prerequisites
+- Node.js 18+
+- Supabase CLI
+- Bun (optional, for faster installs)
+
+## Installation
+git clone https://github.com/your/repo
+cd ai-opportunity-lab
+npm install
+cp .env.example .env
+# Fill in .env values
+
+## Environment Variables
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_anon_key
+VITE_GEMINI_API_KEY=your_gemini_key
+
+## Running Locally
+npm run dev
+
+--- features.md EXAMPLE ---
+## Core Features
+
+### Discovery Engine
+- [x] Niche selector (Health, E-commerce, Finance, Legal, HR, Education)
+- [x] Pain point detection from online communities
+- [x] Real-time pipeline with 7 sequential agents
+- [x] Problem scoring by frequency and urgency
+
+### Content Generation
+- [x] Problem → Tool → Solution format
+- [x] 5-angle engine per pain point (Tutorial, Controversy, Hack, Comparison, Transformation)
+- [x] Platform adaptation (Instagram, TikTok, LinkedIn, X, YouTube Shorts)
+- [x] Video script generation
+
+### SaaS Laboratory
+- [x] SaaS opportunity detection
+- [x] MVP plan generation
+- [x] Technical blueprint generation
+
+--- ARCHITECTURE.md EXAMPLE ---
+# Architecture — AI Opportunity Lab
+
+## System Overview
+Three-layer architecture: React frontend → Supabase Edge Functions → External APIs + PostgreSQL
+
+## Data Flow
+User selects niche
+→ Frontend calls pain-hunter Edge Function
+→ Edge Function fetches from HN + Reddit APIs
+→ AI analyzes and classifies pain points
+→ Results stored in detected_problems table
+→ Frontend displays in real-time via Supabase subscription
+
+## Edge Functions (Agents)
+- pain-hunter: fetches real complaints from HN and Reddit
+- discover-tools: maps existing tools via GitHub + Product Hunt
+- ingest-trends: captures trends via NewsAPI + RSS
+- generate-content-idea: creates Problem→Tool→Solution posts
+- generate-blueprint: generates technical SaaS blueprints
+- generate-mvp-plan: creates actionable MVP roadmaps
+- run-pipeline: orchestrates all agents in sequence
+
+## Database Tables
+- detected_problems: raw pain points with frequency/urgency scores
+- opportunities: validated SaaS opportunities
+- agents: agent status and last run timestamps
+- agent_logs: execution logs per pipeline run
+- trends: market trend data
+- tools: discovered tool combinations
+
+Now generate all 8 files for the project described below. Return ONLY a valid JSON object with this exact structure, no markdown, no explanation:
+{
+  "CLAUDE.md": "...",
+  "README.md": "...",
+  "features.md": "...",
+  "roadmap.md": "...",
+  "ARCHITECTURE.md": "...",
+  "TECH_STACK.md": "...",
+  ".claude/commands/deploy.md": "...",
+  ".gitignore": "..."
+}
+
+USER PROMPT / CONTEXT:
+${prompt}`
+            }] 
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 8192,
+          }
+        })
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new Error(errorData.error?.message || `Erro HTTP: ${response.status}`);
     }
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    
-    if (!toolCall) {
-      throw new Error("A IA não retornou os dados estruturados conforme o esperado.");
+    const result = await response.json();
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+    // Clean JSON from markdown if needed
+    const clean = text.replace(/```json|```/g, "").trim();
+    const files = JSON.parse(clean);
+
+    // Validation
+    const invalidFiles = Object.entries(files).filter(([_, content]) => {
+      const c = (content as string).toLowerCase();
+      return (content as string).length < 200 || c.includes("placeholder") || c.includes("add here");
+    });
+
+    if (invalidFiles.length > 0) {
+      throw new Error("Qualidade insuficiente — tente novamente");
     }
-    
-    return JSON.parse(toolCall.function.arguments).files;
+
+    return files;
   };
 
   const handleGenerateManual = async () => {
@@ -122,16 +273,13 @@ export default function ProjectSetup() {
 
     try {
       const files = await callAI(
-        "Você é um arquiteto de software sênior especializado no ecossistema Anthropic e Claude Code. Sua tarefa é gerar arquivos de configuração e documentação perfeitos para que o Claude Code tenha contexto total do projeto.",
-        `Gere os arquivos iniciais para o meu projeto com base nestas informações:
+        `PROJECT DATA:
 Nome: ${formData.projectName}
 Descrição: ${formData.description}
 Objetivo Principal: ${formData.objective}
 Stack Tecnológica: ${formData.techStack}
 Funcionalidades Atuais: ${formData.features}
-Roadmap/Próximos Passos: ${formData.roadmap}
-
-Gere o conteúdo para: CLAUDE.md, README.md, features.md, roadmap.md, ARCHITECTURE.md, TECH_STACK.md, .claude/commands/deploy.md e .gitignore.`
+Roadmap/Próximos Passos: ${formData.roadmap}`
       );
       setGeneratedFiles(files);
       toast.success("Pacote Claude Code gerado com sucesso!");
@@ -183,9 +331,7 @@ Gere o conteúdo para: CLAUDE.md, README.md, features.md, roadmap.md, ARCHITECTU
       const fileTree = treeData ? treeData.tree.map((item: any) => item.path).join("\n").slice(0, 3000) : "Estrutura de pastas não disponível.";
 
       const files = await callAI(
-        "Você é um arquiteto de software sênior especializado em engenharia reversa e Claude Code. Sua tarefa é analisar o contexto real de um repositório GitHub e gerar a documentação de configuração ideal para o Claude Code.",
-        `Analise os dados reais do repositório ${owner}/${repo} e gere o pacote de configuração Claude Code:
-
+        `GITHUB REPOSITORY CONTEXT (${owner}/${repo}):
 CONTEÚDO DO README.md:
 ${readmeContent.slice(0, 4000)}
 
@@ -193,9 +339,7 @@ CONTEÚDO DO package.json:
 ${packageContent}
 
 ESTRUTURA DE PASTAS (RESUMO):
-${fileTree}
-
-Gere o conteúdo para: CLAUDE.md, README.md, features.md, roadmap.md, ARCHITECTURE.md, TECH_STACK.md, .claude/commands/deploy.md e .gitignore.`
+${fileTree}`
       );
 
       setGeneratedFiles(files);
