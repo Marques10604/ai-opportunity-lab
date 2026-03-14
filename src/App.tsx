@@ -92,6 +92,9 @@ const AppRoutes = () => (
     <Route path="/saas/mvp" element={<P><PlaceholderPage title="Criar MVP" description="Geração de plano MVP com conceito, features, tech stack e roadmap." /></P>} />
     <Route path="/saas/blueprint" element={<P><PlaceholderPage title="Blueprint Técnico" description="Arquitetura técnica detalhada para cada oportunidade de SaaS." /></P>} />
 
+    {/* Ecossistema Anthropic */}
+    <Route path="/project-setup" element={<P><ProjectSetup /></P>} />
+
     {/* Outros */}
     <Route path="/apis" element={<P><PlaceholderPage title="APIs Conectadas" description="Status de conexão, limites de uso e configuração de todas as APIs do sistema." /></P>} />
     <Route path="/how-to-use" element={<P><PlaceholderPage title="Como Usar o App" description="Guia completo de uso da plataforma de inteligência de oportunidades." /></P>} />
