@@ -29,6 +29,10 @@ import ContentIdeas from "@/pages/ContentIdeas";
 import VideoScripts from "@/pages/VideoScripts";
 import PlatformContent from "@/pages/PlatformContent";
 import ProjectSetup from "@/pages/ProjectSetup";
+import RadarDores from "@/pages/RadarDores";
+import CalendarioConteudo from "@/pages/CalendarioConteudo";
+import MonitorLancamentos from "@/pages/MonitorLancamentos";
+import HowToUse from "@/pages/HowToUse";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -94,10 +98,13 @@ const AppRoutes = () => (
 
     {/* Ecossistema Anthropic */}
     <Route path="/project-setup" element={<P><ProjectSetup /></P>} />
+    <Route path="/monitor-lancamentos" element={<P><MonitorLancamentos /></P>} />
+    <Route path="/anthropic/radar" element={<P><RadarDores /></P>} />
+    <Route path="/calendario" element={<P><CalendarioConteudo /></P>} />
 
     {/* Outros */}
     <Route path="/apis" element={<P><PlaceholderPage title="APIs Conectadas" description="Status de conexão, limites de uso e configuração de todas as APIs do sistema." /></P>} />
-    <Route path="/how-to-use" element={<P><PlaceholderPage title="Como Usar o App" description="Guia completo de uso da plataforma de inteligência de oportunidades." /></P>} />
+    <Route path="/how-to-use" element={<P><HowToUse /></P>} />
 
     {/* Legacy redirects */}
     <Route path="/pipeline" element={<Navigate to="/" replace />} />
