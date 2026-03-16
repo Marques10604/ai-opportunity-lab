@@ -1,6 +1,7 @@
 import {
   LayoutDashboard,
   Search,
+  Bell,
   TrendingUp,
   AlertCircle,
   Network,
@@ -32,12 +33,12 @@ import {
   Plug,
   HelpCircle,
   ChevronRight,
-  Bot,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Sidebar,
   SidebarContent,
@@ -71,6 +72,7 @@ const navSections: (NavItem | NavSection)[] = [
     ],
   },
   {
+
     label: "Laboratório SaaS",
     items: [
       { title: "Oportunidades de SaaS", url: "/saas/opportunities", icon: Lightbulb },
@@ -82,11 +84,14 @@ const navSections: (NavItem | NavSection)[] = [
   {
     label: "Ecossistema Anthropic",
     items: [
-      { title: "Configuração do Projeto", url: "/project-setup", icon: Bot },
+      { title: "Configuração de Projeto", url: "/project-setup", icon: Cpu },
+      { title: "Monitor de Lançamentos", url: "/monitor-lancamentos", icon: Bell },
+      { title: "Radar de Dores Anthropic", url: "/anthropic/radar", icon: AlertCircle },
+      { title: "Calendário de Conteúdo", url: "/calendario", icon: CalendarDays },
+      { title: "Como Usar Esta Aba", url: "/how-to-use", icon: HelpCircle },
     ],
   },
   { title: "APIs Conectadas", url: "/apis", icon: Plug },
-  { title: "Como Usar o App", url: "/how-to-use", icon: HelpCircle },
 ];
 
 function isSection(item: NavItem | NavSection): item is NavSection {
@@ -99,6 +104,29 @@ export function AppSidebar() {
   const location = useLocation();
   const { signOut } = useAuth();
   const isActive = (path: string) => location.pathname === path;
+  
+  const [pendentesCount, setPendentesCount] = useState(0);
+
+  useEffect(() => {
+    const fetchPendentes = async () => {
+      const { count } = await supabase
+        .from('calendario_conteudo')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pendente')
+        .eq('user_id', 'default_user');
+      if (count !== null) setPendentesCount(count);
+    };
+    
+    fetchPendentes();
+    
+    const channel = supabase.channel('calendario_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'calendario_conteudo' }, fetchPendentes)
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
@@ -134,9 +162,14 @@ export function AppSidebar() {
                         {entry.items.map((item) => (
                           <SidebarMenuItem key={item.url}>
                             <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                              <NavLink to={item.url} className="transition-colors" activeClassName="text-primary bg-primary/10">
-                                <item.icon className="h-4 w-4" />
-                                {!collapsed && <span className="text-xs">{item.title}</span>}
+                              <NavLink to={item.url} className="transition-colors flex w-full items-center gap-2" activeClassName="text-primary bg-primary/10">
+                                <item.icon className="h-4 w-4 shrink-0" />
+                                {!collapsed && <span className="text-xs flex-1">{item.title}</span>}
+                                {!collapsed && item.url === '/calendario' && pendentesCount > 0 && (
+                                  <span className="ml-auto bg-primary text-primary-foreground text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold shadow-sm">
+                                    {pendentesCount}
+                                  </span>
+                                )}
                               </NavLink>
                             </SidebarMenuButton>
                           </SidebarMenuItem>

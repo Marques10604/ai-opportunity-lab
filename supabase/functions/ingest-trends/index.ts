@@ -70,6 +70,48 @@ serve(async (req) => {
     // Use AI to generate realistic trend data from simulated sources
     const sourceNames = DATA_SOURCES.map((s) => `${s.name} (${s.description})`).join("\n- ");
 
+    // ── FONTE REAL: NewsAPI ──────────────────
+    const NEWS_API_KEY = Deno.env.get("NEWS_API_KEY");
+    let newsArticles: any[] = [];
+
+    if (NEWS_API_KEY) {
+      try {
+        const today = new Date();
+        const lastWeek = new Date(today);
+        lastWeek.setDate(today.getDate() - 7);
+        const fromDate = lastWeek.toISOString().split('T')[0];
+        const toDate = today.toISOString().split('T')[0];
+
+        // 1. Latest articles about specific topics
+        const query1 = encodeURIComponent(`"SaaS" OR "artificial intelligence tools" OR "startup funding" OR "no-code automation"`);
+        const newsRes1 = await fetch(`https://newsapi.org/v2/everything?q=${query1}&sortBy=publishedAt&pageSize=10&language=en`, {
+          headers: { "X-Api-Key": NEWS_API_KEY }
+        });
+
+        // 2. Popular articles from the last 7 days
+        const newsRes2 = await fetch(`https://newsapi.org/v2/everything?q=${query1}&from=${fromDate}&to=${toDate}&sortBy=popularity&pageSize=10&language=en`, {
+          headers: { "X-Api-Key": NEWS_API_KEY }
+        });
+
+        const items1 = newsRes1.ok ? (await newsRes1.json()).articles || [] : [];
+        const items2 = newsRes2.ok ? (await newsRes2.json()).articles || [] : [];
+
+        newsArticles = [...items1, ...items2].map((a: any) => ({
+          title: a.title,
+          description: a.description,
+          source: a.source?.name || "News"
+        }));
+
+        // Remove duplicates by title
+        newsArticles = newsArticles.filter((article, index, self) =>
+          article.title && index === self.findIndex((t) => t.title === article.title)
+        ).slice(0, 15);
+
+      } catch (err) {
+        console.error("NewsAPI error:", err);
+      }
+    }
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -86,7 +128,7 @@ serve(async (req) => {
           },
           {
             role: "user",
-            content: `You have just scanned these data sources:\n- ${sourceNames}\n\nGenerate 5 emerging trends detected today. Each trend should feel like real market intelligence from these sources. Include a mix of categories: AI, SaaS, DevTools, Fintech, Healthcare, EdTech, Creator Economy, E-commerce.`,
+            content: `You have just scanned these data sources:\n- ${sourceNames}\n\nReal News Context (NewsAPI):\n${newsArticles.length > 0 ? newsArticles.map((n: any) => `- [${n.source}] ${n.title}: ${n.description}`).join('\n') : "N/A"}\n\nGenerate 5 emerging trends detected today. Each trend should feel like real market intelligence from these sources. Include a mix of categories: AI, SaaS, DevTools, Fintech, Healthcare, EdTech, Creator Economy, E-commerce.`,
           },
         ],
         tools: [
@@ -163,6 +205,7 @@ serve(async (req) => {
         message: `Ingested ${totalInserted} trends for ${userIds.length} user(s)`,
         sources: DATA_SOURCES.map((s) => s.name),
         trends,
+        news_articles_found: newsArticles.length,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -42,6 +42,139 @@ serve(async (req) => {
       userId = user?.id || null;
     }
 
+    // ── FONTE REAL: GitHub API ──────────────────
+    const GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN");
+    let githubTrending: any[] = [];
+    let githubIssues: any[] = [];
+
+    if (GITHUB_TOKEN) {
+      try {
+        const ghHeaders = {
+          "Authorization": `token ${GITHUB_TOKEN}`,
+          "Accept": "application/vnd.github.v3+json",
+          "User-Agent": "DiscoverTools/1.0.0"
+        };
+
+        const date = new Date();
+        date.setDate(date.getDate() - 30);
+        const dateString = date.toISOString().split('T')[0];
+        
+        // 1. Trending repos
+        const repoQuery = `created:>${dateString} stars:>50`;
+        const repoRes = await fetch(`https://api.github.com/search/repositories?q=${encodeURIComponent(repoQuery)}&sort=stars&order=desc&per_page=10`, { headers: ghHeaders });
+        
+        if (repoRes.ok) {
+          const repoData = await repoRes.json();
+          githubTrending = repoData.items?.map((i: any) => ({
+            name: i.full_name,
+            description: i.description,
+            stars: i.stargazers_count,
+            url: i.html_url
+          })) || [];
+        } else {
+          console.error("GitHub repo search failed:", await repoRes.text());
+        }
+
+        // 2. Top issues from popular repos
+        const reposPart = "repo:n8n-io/n8n repo:nocodb/nocodb repo:appsmithorg/appsmith repo:supabase/supabase";
+        const bugQuery = `${reposPart} is:issue is:open label:bug`;
+        const enhQuery = `${reposPart} is:issue is:open label:enhancement`;
+
+        const [bugRes, enhRes] = await Promise.all([
+          fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(bugQuery)}&sort=reactions-+1&order=desc&per_page=5`, { headers: ghHeaders }),
+          fetch(`https://api.github.com/search/issues?q=${encodeURIComponent(enhQuery)}&sort=reactions-+1&order=desc&per_page=5`, { headers: ghHeaders })
+        ]);
+
+        const bugItems = bugRes.ok ? (await bugRes.json()).items || [] : [];
+        const enhItems = enhRes.ok ? (await enhRes.json()).items || [] : [];
+        
+        githubIssues = [...bugItems, ...enhItems].map((i: any) => ({
+          title: i.title,
+          repo: i.repository_url?.split('/').slice(-2).join('/'),
+          reactions: i.reactions?.total_count || 0,
+          url: i.html_url
+        })).sort((a: any, b: any) => b.reactions - a.reactions).slice(0, 10);
+
+      } catch (err) {
+        console.error("GitHub API error:", err);
+      }
+    }
+
+    // ── FONTE REAL 2: Product Hunt API ──────────────────
+    const PRODUCT_HUNT_TOKEN = Deno.env.get("PRODUCT_HUNT_TOKEN");
+    let productHuntPosts: any[] = [];
+
+    if (PRODUCT_HUNT_TOKEN) {
+      try {
+        const phHeaders = {
+          "Authorization": `Bearer ${PRODUCT_HUNT_TOKEN}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        };
+
+        const today = new Date();
+        const lastWeek = new Date(today);
+        lastWeek.setDate(today.getDate() - 7);
+
+        // GraphQL Query for Product Hunt
+        const phQuery = `
+          query {
+            posts(first: 10, order: RANKING) {
+              edges {
+                node {
+                  name
+                  tagline
+                  description
+                  votesCount
+                  url
+                }
+              }
+            }
+            topicPosts: posts(first: 10, order: NEWEST, topic: "productivity") {
+              edges {
+                node {
+                  name
+                  tagline
+                  votesCount
+                }
+              }
+            }
+          }
+        `;
+
+        const phRes = await fetch("https://api.producthunt.com/v2/api/graphql", {
+          method: "POST",
+          headers: phHeaders,
+          body: JSON.stringify({ query: phQuery })
+        });
+
+        if (phRes.ok) {
+          const phData = await phRes.json();
+          
+          if (phData.data?.posts?.edges) {
+            const topPosts = phData.data.posts.edges.map((e: any) => e.node);
+            const topicPosts = phData.data.topicPosts?.edges?.map((e: any) => e.node) || [];
+            
+            productHuntPosts = [...topPosts, ...topicPosts].map(p => ({
+              name: p.name,
+              tagline: p.tagline,
+              votes: p.votesCount,
+              url: p.url || ""
+            }));
+            
+            // Remove duplicates based on name
+            productHuntPosts = productHuntPosts.filter((post, index, self) =>
+              index === self.findIndex((t) => t.name === post.name)
+            ).sort((a, b) => b.votes - a.votes).slice(0, 15);
+          }
+        } else {
+          console.error("Product Hunt API failed:", await phRes.text());
+        }
+      } catch (err) {
+        console.error("Product Hunt error:", err);
+      }
+    }
+
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -83,6 +216,15 @@ Use a tool fornecida para retornar dados estruturados.`,
 Título: ${problem_title}
 Descrição: ${problem_description || "N/A"}
 Nicho: ${niche_category || "Geral"}
+
+Contexto do GitHub (Trending Repos):
+${githubTrending.length > 0 ? githubTrending.map((r: any) => `- ${r.name} (${r.stars} stars): ${r.description}`).join('\n') : "N/A"}
+
+Contexto do GitHub (Top Issues/Bugs de ferramentas populares):
+${githubIssues.length > 0 ? githubIssues.map((i: any) => `- ${i.repo}: ${i.title} (${i.reactions} reações)`).join('\n') : "N/A"}
+
+Contexto do Product Hunt (Top Produtos Recentes):
+${productHuntPosts.length > 0 ? productHuntPosts.map((p: any) => `- ${p.name} (${p.votes} votos): ${p.tagline}`).join('\n') : "N/A"}
 
 Descubra ferramentas modernas de AI e desenvolvimento que resolvem este problema. Crie combinações poderosas e gere ideias de negócio AI-First.`,
           },
@@ -223,7 +365,13 @@ Descubra ferramentas modernas de AI e desenvolvimento que resolvem este problema
       await supabase.from("tool_combinations").insert(comboRows);
     }
 
-    return new Response(JSON.stringify({ success: true, ...result }), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      github_trending_found: githubTrending.length,
+      github_issues_found: githubIssues.length,
+      product_hunt_found: productHuntPosts.length,
+      ...result 
+    }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
