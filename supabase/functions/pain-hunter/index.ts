@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
     }
 
     const geminiKey = rawKey.trim();
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
 
     const promptText = `Analise esses títulos reais do Hacker News e posts do Reddit e gere 10 problemas detalhados de usuários em português (Brasil). 
 Títulos Hacker News: ${hnPains.slice(0, 10).map((s: any) => s.title).join(" | ")}
@@ -133,7 +133,7 @@ Retorne APENAS um objeto JSON no formato:
       }
     };
 
-    console.log(`Payload Gemini (v1beta): ${JSON.stringify(payload).substring(0, 200)}...`);
+    console.log(`Payload Gemini (v1): ${JSON.stringify(payload).substring(0, 200)}...`);
 
     const aiResponse = await fetch(endpoint, {
       method: "POST",
@@ -142,12 +142,18 @@ Retorne APENAS um objeto JSON no formato:
     });
 
     if (!aiResponse.ok) {
-      const errBody = await aiResponse.json().catch(() => ({}));
-      console.error("Gemini API error:", aiResponse.status, errBody);
+      const errText = await aiResponse.text().catch(() => "Erro ilegível");
+      console.error(`Gemini API error ${aiResponse.status}:`, errText);
+      
+      let parsedError: any = {};
+      try { parsedError = JSON.parse(errText); } catch(e) {}
+
+      const detailMsg = parsedError.error?.message || "Motivo oculto pelo Google";
+
       return new Response(JSON.stringify({ 
-        error: `Erro da API do Gemini (REST): ${aiResponse.status}`, 
+        error: `Erro Gemini 400 (${detailMsg})`, 
         status: aiResponse.status,
-        details: errBody 
+        details: parsedError 
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

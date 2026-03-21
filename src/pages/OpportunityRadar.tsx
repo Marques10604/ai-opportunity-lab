@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, Loader2, AlertTriangle, Globe, MessageSquare,
+  Search, Loader2, AlertTriangle, Globe,
   Zap, TrendingUp, Flame, Tag, Wrench, ChevronDown, ChevronUp,
   Filter, Layers, ArrowRight, Lightbulb, Film, Sparkles, ExternalLink, Database, CheckCircle2,
-  RefreshCw, Clock, Rocket
+  RefreshCw, Clock
 } from "lucide-react";
-import { COPYWRITER_SYSTEM_PROMPT } from "@/lib/copywriterAgent";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDetectedProblems } from "@/hooks/useSupabaseData";
@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelectedProblem } from "@/contexts/SelectedProblemContext";
 
 const NICHES = [
-  "Todos", "Saúde", "E-commerce", "Finanças", "Jurídico", "Imobiliário",
+  "Todos", "IA / AI-First", "Saúde", "E-commerce", "Finanças", "Jurídico", "Imobiliário",
   "RH", "Educação", "Logística", "Tecnologia", "Marketing", "Produtividade",
 ];
 
@@ -56,6 +56,16 @@ export default function OpportunityRadar() {
 
   // Selected Problem & Discovery Pipeline State
   const [selectedProblem, setSelectedProblem] = useState<string | null>(null);
+  const [cooldownTime, setCooldownTime] = useState(0);
+
+  useEffect(() => {
+    if (cooldownTime > 0) {
+      const timer = setInterval(() => {
+        setCooldownTime((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [cooldownTime]);
   const [discovering, setDiscovering] = useState(false);
   const [discoveryResult, setDiscoveryResult] = useState<any>(null);
   const [expandedCombo, setExpandedCombo] = useState<number | null>(null);
@@ -87,7 +97,6 @@ export default function OpportunityRadar() {
   const handleHunt = async (force = false) => {
     if (!user) return;
 
-    // Part 1: Pre-Batch Strategy check
     if (!force && daysRemaining !== null && daysRemaining > 0) {
       toast.info(`Usando lote atual. Faltam ${daysRemaining} dias para a próxima atualização automática.`);
       setHasSearched(true);
@@ -105,60 +114,22 @@ export default function OpportunityRadar() {
     }, 1500);
 
     try {
-      const prompt = `Gere 15 problemas reais que pessoas enfrentam no nicho de ${selectedNiche === 'Todos' ? 'Negócios Online' : selectedNiche}. Para cada problema retorne JSON com: title, description, source_platform (Reddit/YouTube/Twitter/LinkedIn/Threads), frequency_score (1-10), urgency_score (1-10). Responda APENAS com array JSON valido.`;
+      toast.info("🚀 Motor de IA ativado! Gerando nova safra de dores no ambiente nativo (Supabase).");
       
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
-          })
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || "Erro na API do Gemini");
-      }
-
-      const resData = await response.json();
-      const aiText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      if (!aiText) throw new Error("A AI retornou uma resposta vazia");
-      
-      const jsonMatch = aiText.match(/\[.*\]/s);
-      if (!jsonMatch) throw new Error("Resposta da AI em formato JSON inválido");
-      
-      const parsedProblems = JSON.parse(jsonMatch[0]);
-
-      const problemsToInsert = parsedProblems.map((p: any) => {
-        const urgency = parseInt(p.urgency_score) || 5;
-        const frequency = parseInt(p.frequency_score) || 5;
-        
-        return {
-          user_id: user.id,
-          problem_title: p.title || p.problem_title,
-          problem_description: p.description || p.problem_description,
-          source_platform: p.source_platform || "Reddit",
-          niche_category: selectedNiche === "Todos" ? "Geral" : selectedNiche,
-          frequency_score: frequency,
-          urgency_score: urgency,
-          viral_score: Math.floor((frequency + urgency) / 2) * 10,
-          impact_level: urgency > 8 ? "Crítico" : urgency > 6 ? "Alto" : urgency > 4 ? "Médio" : "Baixo",
-          timing_status: frequency > 7 ? "Emergente" : "Crescendo"
-        };
+      const { data: huntData, error: huntError } = await supabase.functions.invoke('pain-hunter', {
+        body: { niche: selectedNiche === 'Todos' ? 'Negócios Online' : selectedNiche }
       });
 
-      const { error: insertError } = await supabase
-        .from("detected_problems")
-        .insert(problemsToInsert);
-
-      if (insertError) throw insertError;
+      if (huntError || huntData?.error) {
+        throw new Error(huntError?.message || huntData?.error || "Erro na Edge Function pain-hunter");
+      }
 
       queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
-      toast.success(`${problemsToInsert.length} problemas descobertos e salvos no lote de 15 dias!`);
+      toast.success("🚀 Motor de IA ativado! Gerando soluções em background. Isso pode levar alguns minutos...");
+
+      // Aciona o processamento do pipeline de forma assíncrona
+      supabase.functions.invoke('process-pipeline-queue').catch(e => console.error("Erro invoke queue:", e));
+
     } catch (err: any) {
       console.error("Erro completo:", err);
       toast.error(err.message || "Erro ao caçar problemas");
@@ -172,12 +143,11 @@ export default function OpportunityRadar() {
     }
   };
 
-  const [isGeneratingFull, setIsGeneratingFull] = useState(false);
+
 
   const handleSelectProblem = async (problemId: string) => {
-    console.log("Iniciando handleSelectProblem para ID:", problemId);
+    console.log("Iniciando leitura ultra-rápida do cache no Supabase para ID:", problemId);
     try {
-      // Limpeza de estado assíncrona para evitar conflitos de renderização no React
       await new Promise(resolve => setTimeout(resolve, 10));
       if (typeof setSelectedPipelineData === 'function') {
         setSelectedPipelineData(null);
@@ -185,221 +155,79 @@ export default function OpportunityRadar() {
       setSelectedProblem(problemId);
       setDiscoveryResult(null);
 
-      const problemData = problems.find(p => p.id === problemId);
+      const problemData = problems.find((p: any) => p.id === problemId);
       if (!problemData) {
         throw new Error("Dados do problema não encontrados na base local.");
       }
-      if (!user) {
-        throw new Error("Sessão de usuário não encontrada. Faça login novamente.");
+
+      // UX Ouro: Impede requisição e avisa o usuário baseando-se no pipeline_status real-time do cache
+      if (problemData.pipeline_status === 'pending' || problemData.pipeline_status === 'processing') {
+        toast.info("⏳ A IA ainda está trabalhando neste problema em background...\nVolte e clique novamente em alguns segundos.", { duration: 4000 });
+        return;
       }
 
+      if (problemData.pipeline_status === 'error') {
+        toast.error(`A IA falhou ao processar: ${problemData.pipeline_error || 'Desconhecido'}`);
+        return;
+      }
+
+      // Se passou pelas barreiras acima, o pipeline_status é 'completed'.
       setDiscovering(true);
-      setIsGeneratingFull(true);
-      
+
       try {
-        const prompt = `Você é um estrategista de conteúdo e negócios AI-First.
-Analise o problema: "${problemData.problem_title}" (${problemData.problem_description || "N/A"}) no nicho "${problemData.niche_category || "Geral"}".
+        // Fetch paralelo garantindo fluidez instantânea (latência < 150ms)
+        const [toolsRes, combosRes, scriptRes] = await Promise.all([
+          supabase.from("tools").select("*").eq("source_problem_id", problemId),
+          supabase.from("tool_combinations").select("*").eq("source_problem_id", problemId),
+          supabase.from("content_opportunities").select("*").eq("source_problem_id", problemId).limit(1).maybeSingle()
+        ]);
 
-Gere um pipeline completo em um único JSON com a seguinte estrutura:
+        if (toolsRes.error) throw toolsRes.error;
+        if (combosRes.error) throw combosRes.error;
+        if (scriptRes.error) throw scriptRes.error;
 
-{
-  "discovered_tools": [
-    {"tool_name": "...", "category": "AI Tools|Automation Frameworks|Developer Tools", "description": "...", "website": "..."}
-  ],
-  "combinations": [
-    {
-      "solution_name": "...",
-      "tools_used": ["nome_da_ferramenta"],
-      "solution_description": "...",
-      "expected_result": "...",
-      "innovation_score": 9,
-      "content_idea": "...",
-      "video_script": {"hook": "...", "problem": "...", "tools_demo": "...", "solution": "...", "result": "..."},
-      "business_idea": {"nome": "...", "descricao_produto": "...", "infraestrutura": "...", "stack_ferramentas": [], "monetizacao": "...", "diferencial_ai": "...", "potencial_escala": "..."}
-    }
-  ],
-  "content_ideas": [
-    {
-      "angle": "tutorial|polemica|hack|comparativo|transformacao",
-      "title": "...",
-      "instagram": "roteiro completo 30s com hook nos primeiros 3s",
-      "tiktok": "roteiro completo storytelling",
-      "linkedin": "post completo 200-300 palavras",
-      "twitter": ["tweet1", "tweet2", "tweet3", "tweet4", "tweet5"],
-      "youtube": "roteiro tutorial 60s"
-    }
-  ],
-  "video_script": {
-    "hook": "primeiros 3 segundos",
-    "problem": "desenvolvimento do problema",
-    "solution": "demonstracao da solucao",
-    "cta": "call to action final"
-  },
-  "platform_content": {
-    "instagram": {"format": "Reels", "duration": "30s", "style": "Cinematic"},
-    "tiktok": {"format": "Trends", "duration": "15s", "style": "Lofi"},
-    "linkedin": {"format": "Article", "duration": "3min", "style": "Professional"},
-    "twitter": {"format": "Thread", "duration": "1min", "style": "Direct"},
-    "youtube": {"format": "Shorts", "duration": "60s", "style": "Educational"}
-  }
-}
+        console.log("🛠️ Tools recebidas do DB:", toolsRes.data);
+        console.log("🛠️ Combos recebidos do DB:", combosRes.data);
 
-Gere 5 content_ideas (um para cada 'angle').
-Gere 2-3 combinations.
-Responda APENAS com o JSON válido em Português (Brasil).`;
-
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              system_instruction: {
-                parts: [{ text: COPYWRITER_SYSTEM_PROMPT }]
-              }
-            })
-          }
-        );
-
-        const resData = await response.json();
-
-        if (!response.ok) {
-          const errorMsg = resData.error?.message || response.statusText || "Erro desconhecido";
-          throw new Error(`Falha na API do Gemini: ${errorMsg}`);
-        }
-
-        const aiText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!aiText) throw new Error("A IA retornou uma resposta vazia");
-        
-        const cleanedText = aiText.replace(/```json|```/g, "").trim();
-        const result = JSON.parse(cleanedText);
-
-        // 1. Save Tools
-        if (result.discovered_tools) {
-          const { error } = await supabase.from("tools").insert(
-            result.discovered_tools.map((t: any) => ({
-              user_id: user.id,
-              tool_name: t.tool_name,
-              category: t.category,
-              description: t.description,
-              website: t.website || ""
-            }))
-          );
-          if (error) console.error("Erro ao salvar tools:", error);
-        }
-
-        // 2. Save Combinations
-        if (result.combinations) {
-          const { error } = await supabase.from("tool_combinations").insert(
-            result.combinations.map((c: any) => ({
-              user_id: user.id,
-              source_problem_id: problemId,
-              solution_name: c.solution_name,
-              solution_description: c.solution_description,
-              tools_used: c.tools_used,
-              expected_result: c.expected_result,
-              innovation_score: c.innovation_score,
-              content_idea: c.content_idea,
-              video_script: c.video_script,
-              business_idea: c.business_idea
-            }))
-          );
-          if (error) console.error("Erro ao salvar combinações:", error);
-        }
-
-        // 3. Save Content Ideas (to calendario_conteudo for each platform)
-        if (result.content_ideas) {
-          const calendarRows: any[] = [];
-          const platforms = ["instagram", "tiktok", "linkedin", "twitter", "youtube"];
-          
-          result.content_ideas.forEach((idea: any) => {
-            platforms.forEach(platform => {
-              const platformKey = platform === 'twitter' ? 'x' : platform;
-              const pContent = result.platform_content?.[platform] || {};
-              
-              calendarRows.push({
-                user_id: user.id,
-                dor_titulo: idea.title,
-                angulo: idea.angle,
-                plataforma: platformKey,
-                roteiro_narracao: typeof idea[platform] === 'string' ? idea[platform] : JSON.stringify(idea[platform]),
-                roteiro_tela: pContent.style || "",
-                duracao_estimada: pContent.duration || "",
-                hook: platform === 'instagram' && typeof idea.instagram === 'string' ? idea.instagram.substring(0, 100) : idea.title,
-                status: 'pendente'
-              });
-            });
-          });
-          const { error } = await supabase.from("calendario_conteudo").insert(calendarRows);
-          if (error) console.error("Erro ao salvar calendário:", error);
-        }
-        
-        // 4. Save to content_opportunities
-        const { error: oppError } = await supabase.from("content_opportunities").insert({
-          user_id: user.id,
-          titulo_conteudo: problemData.problem_title,
-          tipo_conteudo: "Pipeline Completo",
-          gancho: result.video_script?.hook,
-          roteiro_curto: result.video_script?.solution,
-          source_problem_id: problemId
-        });
-        if (oppError) console.error("Erro ao salvar content opportunities:", oppError);
-
-        // 5. Automatic Save as Opportunity (Sync with Lab)
-        if (result.combinations && result.combinations.length > 0) {
-          const firstCombo = result.combinations[0];
-          const mScore = problemData.viral_score || 50;
-          
-          let compLevel = 'Média';
-          if (mScore > 80) compLevel = 'Baixa';
-          else if (mScore < 60) compLevel = 'Alta';
-
-          const { error: oppLabError } = await supabase.from("opportunities").insert({
-            user_id: user.id,
-            title: firstCombo.solution_name,
+        // Reconstrói a estrutura que a UI espera renderizar magicamente
+        const reconstructedResult = {
+          discovered_tools: toolsRes.data || [],
+          combinations: combosRes.data?.map((c: any) => ({
+            solution_name: c.solution_name,
+            solution_description: c.solution_description,
+            tools_used: c.tools_used,
+            expected_result: c.expected_result,
+            innovation_score: c.innovation_score,
+            content_idea: c.content_idea,
+            video_script: c.video_script,
+            business_idea: c.business_idea
+          })) || [],
+          video_script: scriptRes.data ? {
+            hook: scriptRes.data.gancho,
+            solution: scriptRes.data.roteiro_curto,
             problem: problemData.problem_title,
-            solution: firstCombo.solution_description,
-            niche: problemData.niche_category || "Geral",
-            market_score: mScore,
-            competition_level: compLevel,
-            difficulty_level: 'Média',
-            detected_problem_id: problemId
-          });
-          if (oppLabError) console.error("Erro ao salvar opportunity (Lab):", oppLabError);
-          else toast.success("Oportunidade salva no Laboratório SaaS!");
-        }
+            cta: "Salve se te ajudou!"
+          } : null
+        };
 
-        setDiscoveryResult(result);
+        setDiscoveryResult(reconstructedResult);
         setGlobalProblem(problemData);
-        setSelectedPipelineData(result);
+        setSelectedPipelineData(reconstructedResult);
 
-        queryClient.invalidateQueries({ queryKey: ["tools"] });
-        queryClient.invalidateQueries({ queryKey: ["tool_combinations"] });
-        queryClient.invalidateQueries({ queryKey: ["calendario_conteudo"] });
-        queryClient.invalidateQueries({ queryKey: ["content_opportunities"] });
-        queryClient.invalidateQueries({ queryKey: ["opportunities"] });
-        
-        toast.success("Conteúdo gerado! Todas as abas foram preenchidas.");
-        
         setTimeout(() => {
           document.getElementById('pipeline-results')?.scrollIntoView({ behavior: 'smooth' });
         }, 300);
 
       } catch (err: any) {
-        console.error("Erro na execução do pipeline:", err);
-        toast.error(err.message || "Erro ao gerar pipeline completo");
+        console.error("Erro detalhado do Supabase:", err);
+        toast.error("Erro ler Pipeline no Banco de Dados.");
       } finally {
-        // Garantir que as flags de loading são desligadas em qualquer cenário de sucesso ou erro do pipeline
         setDiscovering(false);
-        setIsGeneratingFull(false);
       }
     } catch (err: any) {
       console.error("Erro crítico ao inicializar problema:", err);
       toast.error(err.message || "Ocorreu um erro ao processar seu card.");
-      // Garantir que não fique preso
       setDiscovering(false);
-      setIsGeneratingFull(false);
     }
   };
 
@@ -413,7 +241,7 @@ Responda APENAS com o JSON válido em Português (Brasil).`;
         problem: selectedProblemData.problem_title,
         solution: combo.solution_description,
         niche: selectedNiche === "Todos" ? "Geral" : selectedNiche,
-        market_score: Math.min(100, (selectedProblemData.viral_score || 50) + (combo.innovation_score * 5)),
+        market_score: Math.min(100, (Number(selectedProblemData.viral_score) || 50) + (Number(combo.innovation_score) * 5)),
         competition_level: "Medium",
         difficulty_level: "Medium"
       }).select().single();
@@ -431,51 +259,7 @@ Responda APENAS com o JSON válido em Português (Brasil).`;
 
   return (
     <div className="space-y-8 max-w-7xl pb-16">
-      <AnimatePresence>
-        {isGeneratingFull && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="max-w-md w-full p-8 bg-card border border-primary/20 rounded-2xl text-center space-y-6 shadow-2xl"
-            >
-              <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center glow-primary relative">
-                <Sparkles className="h-10 w-10 text-primary animate-pulse" />
-                <Loader2 className="h-20 w-20 text-primary animate-spin absolute inset-0 opacity-20" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-foreground">Gerando conteúdo completo...</h3>
-                <p className="text-sm text-muted-foreground">
-                  Criando estratégias, roteiros e variações para todas as abas simultaneamente.
-                </p>
-              </div>
-              <div className="space-y-3">
-                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 px-1">
-                    <span>Injetando Inteligência</span>
-                    <span>100%</span>
-                 </div>
-                 <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
-                   <motion.div 
-                      className="h-full bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.5)]" 
-                      initial={{ width: "0%" }} 
-                      animate={{ width: "100%" }} 
-                      transition={{ duration: 15, ease: "linear" }} 
-                   />
-                 </div>
-              </div>
-              <p className="text-[10px] text-primary/60 font-mono animate-pulse uppercase tracking-tight">
-                [SYSTEM: Populando Tabelas de Conteúdo e Canais]
-              </p>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -656,12 +440,23 @@ Responda APENAS com o JSON válido em Português (Brasil).`;
                      <button
                        key={p.id}
                        onClick={() => handleSelectProblem(p.id)}
-                       className={`text-left flex flex-col p-4 rounded-xl border transition-all ${
-                         isSelected
+                       disabled={cooldownTime > 0}
+                       className={`relative overflow-hidden text-left flex flex-col p-4 rounded-xl border transition-all ${
+                         cooldownTime > 0
+                           ? "border-border/50 bg-secondary/10 opacity-70 cursor-not-allowed grayscale-[50%]"
+                           : isSelected
                            ? "border-primary bg-primary/5 ring-1 ring-primary/30"
                            : "border-border bg-card hover:bg-secondary/40 hover:border-primary/40"
                        }`}
                      >
+                       {cooldownTime > 0 && (
+                         <div className="absolute inset-0 bg-background/50 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                           <div className="bg-background border border-primary/30 text-primary px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg">
+                             <Clock className="h-3.5 w-3.5 animate-pulse" />
+                             Aguarde {cooldownTime}s...
+                           </div>
+                         </div>
+                       )}
                        <div className="flex justify-between items-start gap-2 mb-2 w-full">
                          <p className="font-semibold text-sm line-clamp-2 leading-tight flex-1">{p.problem_title}</p>
                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${IMPACT_COLORS[p.impact_level] || "bg-secondary"}`}>

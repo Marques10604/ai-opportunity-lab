@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SelectedProblemProvider } from "@/contexts/SelectedProblemContext";
 import AppLayout from "@/components/AppLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import PlaceholderPage from "@/components/PlaceholderPage";
 import DiscoveryHunter from "@/pages/DiscoveryHunter";
 import OpportunityWindow from "@/pages/OpportunityWindow";
@@ -51,7 +52,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function P({ children }: { children: React.ReactNode }) {
-  return <ProtectedRoute><AppLayout>{children}</AppLayout></ProtectedRoute>;
+  return (
+    <ProtectedRoute>
+      <AppLayout>
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
+      </AppLayout>
+    </ProtectedRoute>
+  );
 }
 
 const AppRoutes = () => (
