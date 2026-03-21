@@ -268,13 +268,15 @@ export default function ContentDetail() {
                 {new Date(content.created_at).toLocaleDateString("pt-BR")}
               </span>
             </div>
-            <div className="mt-4 max-w-[250px]">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-muted-foreground">Pontuação Viral</span>
-                <span className="text-xs font-mono font-bold">{score}/100</span>
+            {score > 0 && (
+              <div className="mt-4 max-w-[250px]">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground">Pontuação Viral</span>
+                  <span className="text-xs font-mono font-bold">{score}/100</span>
+                </div>
+                <Progress value={score} className="h-2" />
               </div>
-              <Progress value={score} className="h-2" />
-            </div>
+            )}
           </div>
         </div>
       </motion.div>
@@ -326,94 +328,94 @@ export default function ContentDetail() {
       </motion.div>
 
       {/* Slides do Carrossel */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="rounded-xl border border-border bg-card p-6"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold">
-            Slides do Carrossel ({editingSlides ? slidesValue.length : slides.length})
-          </h2>
-          <div className="flex items-center gap-2">
-            {editingSlides ? (
-              <>
-                <Button variant="ghost" size="sm" onClick={cancelEditSlides} className="gap-1.5 h-8" disabled={saving}>
-                  <X className="h-3.5 w-3.5" /> Cancelar
+      {(slides.length > 0 || editingSlides) && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="rounded-xl border border-border bg-card p-6 mt-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold">
+              Slides do Carrossel ({editingSlides ? slidesValue.length : slides.length})
+            </h2>
+            <div className="flex items-center gap-2">
+              {editingSlides ? (
+                <>
+                  <Button variant="ghost" size="sm" onClick={cancelEditSlides} className="gap-1.5 h-8" disabled={saving}>
+                    <X className="h-3.5 w-3.5" /> Cancelar
+                  </Button>
+                  <Button size="sm" onClick={saveSlides} className="gap-1.5 h-8" disabled={saving}>
+                    <Save className="h-3.5 w-3.5" /> {saving ? "Salvando..." : "Salvar"}
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" size="sm" onClick={startEditSlides} className="gap-1.5 h-8">
+                  <Pencil className="h-3.5 w-3.5" /> Editar
                 </Button>
-                <Button size="sm" onClick={saveSlides} className="gap-1.5 h-8" disabled={saving}>
-                  <Save className="h-3.5 w-3.5" /> {saving ? "Salvando..." : "Salvar"}
-                </Button>
-              </>
-            ) : (
-              <Button variant="outline" size="sm" onClick={startEditSlides} className="gap-1.5 h-8">
-                <Pencil className="h-3.5 w-3.5" /> Editar
-              </Button>
-            )}
+              )}
+            </div>
           </div>
-        </div>
 
-        {editingSlides ? (
-          <div className="grid gap-3">
-            {slidesValue.map((slide, index) => (
-              <div key={index} className="flex items-start gap-3 rounded-lg border border-border p-4">
-                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
-                  <span className="text-xs font-bold text-primary">{index + 1}</span>
+          {editingSlides ? (
+            <div className="grid gap-3">
+              {slidesValue.map((slide, index) => (
+                <div key={index} className="flex items-start gap-3 rounded-lg border border-border p-4">
+                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-1">
+                    <span className="text-xs font-bold text-primary">{index + 1}</span>
+                  </div>
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <Input
+                      value={slide.titulo}
+                      onChange={(e) => updateSlide(index, "titulo", e.target.value)}
+                      placeholder="Título do slide"
+                      className="text-sm h-8"
+                    />
+                    <Textarea
+                      value={slide.texto}
+                      onChange={(e) => updateSlide(index, "texto", e.target.value)}
+                      placeholder="Conteúdo do slide"
+                      className="text-sm min-h-[60px]"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeSlide(index)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
-                <div className="flex-1 min-w-0 space-y-2">
-                  <Input
-                    value={slide.titulo}
-                    onChange={(e) => updateSlide(index, "titulo", e.target.value)}
-                    placeholder="Título do slide"
-                    className="text-sm h-8"
-                  />
-                  <Textarea
-                    value={slide.texto}
-                    onChange={(e) => updateSlide(index, "texto", e.target.value)}
-                    placeholder="Conteúdo do slide"
-                    className="text-sm min-h-[60px]"
-                  />
+              ))}
+              <Button variant="outline" size="sm" onClick={addSlide} className="gap-1.5 w-fit">
+                <Plus className="h-3.5 w-3.5" /> Adicionar slide
+              </Button>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {slides.map((slide: any, index: number) => (
+                <div key={index} className="flex items-start gap-3 rounded-lg bg-secondary/50 p-4">
+                  <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-primary">{index + 1}</span>
+                  </div>
+                  <div className="flex-1 min-w-0 text-sm">
+                    {typeof slide === "string" ? (
+                      <p className="text-muted-foreground">{slide}</p>
+                    ) : (
+                      <>
+                        {slide.titulo && <p className="font-medium mb-1">{slide.titulo}</p>}
+                        {slide.texto && <p className="text-muted-foreground">{slide.texto}</p>}
+                        {slide.conteudo && <p className="text-muted-foreground">{slide.conteudo}</p>}
+                      </>
+                    )}
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-                  onClick={() => removeSlide(index)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ))}
-            <Button variant="outline" size="sm" onClick={addSlide} className="gap-1.5 w-fit">
-              <Plus className="h-3.5 w-3.5" /> Adicionar slide
-            </Button>
-          </div>
-        ) : slides.length > 0 ? (
-          <div className="grid gap-3">
-            {slides.map((slide: any, index: number) => (
-              <div key={index} className="flex items-start gap-3 rounded-lg bg-secondary/50 p-4">
-                <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold text-primary">{index + 1}</span>
-                </div>
-                <div className="flex-1 min-w-0 text-sm">
-                  {typeof slide === "string" ? (
-                    <p className="text-muted-foreground">{slide}</p>
-                  ) : (
-                    <>
-                      {slide.titulo && <p className="font-medium mb-1">{slide.titulo}</p>}
-                      {slide.texto && <p className="text-muted-foreground">{slide.texto}</p>}
-                      {slide.conteudo && <p className="text-muted-foreground">{slide.conteudo}</p>}
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground/60">Nenhum slide disponível</p>
-        )}
-      </motion.div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      )}
     </div>
   );
 }

@@ -2,8 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { SelectedProblemProvider } from "@/contexts/SelectedProblemContext";
 import AppLayout from "@/components/AppLayout";
 import PlaceholderPage from "@/components/PlaceholderPage";
 import DiscoveryHunter from "@/pages/DiscoveryHunter";
@@ -18,6 +18,8 @@ import ContentOpportunities from "@/pages/ContentOpportunities";
 import ContentDetail from "@/pages/ContentDetail";
 import Opportunities from "@/pages/Opportunities";
 import OpportunityDetail from "@/pages/OpportunityDetail";
+import LandingPageGenerator from "./pages/LandingPageGenerator";
+import TechnicalBlueprint from "./pages/TechnicalBlueprint";
 import SavedPlans from "@/pages/SavedPlans";
 import Pipeline from "@/pages/Pipeline";
 import AgentMonitor from "@/pages/AgentMonitor";
@@ -28,12 +30,15 @@ import OpportunityRadar from "@/pages/OpportunityRadar";
 import ContentIdeas from "@/pages/ContentIdeas";
 import VideoScripts from "@/pages/VideoScripts";
 import PlatformContent from "@/pages/PlatformContent";
+import Motor5Angulos from "@/pages/Motor5Angulos";
 import ProjectSetup from "@/pages/ProjectSetup";
 import RadarDores from "@/pages/RadarDores";
 import CalendarioConteudo from "@/pages/CalendarioConteudo";
 import MonitorLancamentos from "@/pages/MonitorLancamentos";
 import HowToUse from "@/pages/HowToUse";
 import NotFound from "./pages/NotFound";
+import WeeklyCalendar from "@/pages/WeeklyCalendar";
+import { useDataCleanup } from "@/hooks/useDataCleanup";
 
 const queryClient = new QueryClient();
 
@@ -70,11 +75,9 @@ const AppRoutes = () => (
     {/* Conteúdo para Redes Sociais */}
     <Route path="/content/ideas" element={<P><ContentIdeas /></P>} />
     <Route path="/content/scripts" element={<P><VideoScripts /></P>} />
-    <Route path="/content/generated" element={<P><ContentOpportunities /></P>} />
-    <Route path="/content/generated/:id" element={<P><ContentDetail /></P>} />
-    <Route path="/content/angles" element={<P><PlaceholderPage title="Motor de 5 Ângulos" description="1 problema → 5 ângulos: Tutorial, Polêmica, Hack, Comparativo, Transformação." /></P>} />
+    <Route path="/content/angles" element={<P><Motor5Angulos /></P>} />
     <Route path="/content/platforms" element={<P><PlatformContent /></P>} />
-    <Route path="/content/calendar" element={<P><PlaceholderPage title="Calendário de Conteúdo" description="Planejamento visual de publicações por plataforma." /></P>} />
+    <Route path="/content/calendar" element={<P><WeeklyCalendar /></P>} />
 
     {/* Inteligência de Conteúdo */}
     <Route path="/intelligence/metrics" element={<P><PlaceholderPage title="Métricas de Posts" description="Acompanhamento de views, likes, comentários, compartilhamentos e salvamentos." /></P>} />
@@ -92,9 +95,8 @@ const AppRoutes = () => (
     {/* Laboratório SaaS */}
     <Route path="/saas/opportunities" element={<P><Opportunities /></P>} />
     <Route path="/saas/opportunities/:id" element={<P><OpportunityDetail /></P>} />
-    <Route path="/saas/ideas" element={<P><PlaceholderPage title="Ideias de Produto" description="Ideias de SaaS geradas a partir de combinações de problemas e ferramentas." /></P>} />
-    <Route path="/saas/mvp" element={<P><PlaceholderPage title="Criar MVP" description="Geração de plano MVP com conceito, features, tech stack e roadmap." /></P>} />
-    <Route path="/saas/blueprint" element={<P><PlaceholderPage title="Blueprint Técnico" description="Arquitetura técnica detalhada para cada oportunidade de SaaS." /></P>} />
+    <Route path="/saas/landing" element={<P><LandingPageGenerator /></P>} />
+    <Route path="/saas/blueprint" element={<P><TechnicalBlueprint /></P>} />
 
     {/* Ecossistema Anthropic */}
     <Route path="/project-setup" element={<P><ProjectSetup /></P>} />
@@ -125,18 +127,23 @@ const AppRoutes = () => (
   </Routes>
 );
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+const App = () => {
+  useDataCleanup();
+  return (
+    <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
+        <SelectedProblemProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </SelectedProblemProvider>
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

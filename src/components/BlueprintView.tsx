@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileCode2, ListChecks, LayoutGrid, Database, Globe, Cpu,
-  Download, CheckCircle2,
+  Download, CheckCircle2, Save, Loader2
 } from "lucide-react";
 
 export type Blueprint = {
@@ -98,7 +98,19 @@ function exportAsMarkdown(blueprint: Blueprint, title: string): string {
   return lines.join("\n");
 }
 
-export function BlueprintView({ blueprint, opportunityTitle }: { blueprint: Blueprint; opportunityTitle: string }) {
+export function BlueprintView({ 
+  blueprint, 
+  opportunityTitle,
+  onSave,
+  saving = false,
+  saved = false
+}: { 
+  blueprint: Blueprint; 
+  opportunityTitle: string;
+  onSave?: () => void;
+  saving?: boolean;
+  saved?: boolean;
+}) {
   const handleExport = () => {
     const md = exportAsMarkdown(blueprint, opportunityTitle);
     const blob = new Blob([md], { type: "text/markdown" });
@@ -122,12 +134,27 @@ export function BlueprintView({ blueprint, opportunityTitle }: { blueprint: Blue
             <p className="text-[11px] text-muted-foreground font-mono">{opportunityTitle} · Gerado em {new Date().toLocaleDateString("pt-BR")}</p>
           </div>
         </div>
-        <button
-          onClick={handleExport}
-          className="h-9 px-4 rounded-lg border border-border bg-secondary text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors"
-        >
-          <Download className="h-3.5 w-3.5" /> Exportar .md
-        </button>
+        <div className="flex items-center gap-2">
+          {onSave && (
+            <button
+              onClick={onSave}
+              disabled={saving || saved}
+              className={`h-9 px-4 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${
+                saved ? "bg-success/10 text-success border border-success/30" : "bg-primary text-primary-foreground hover:opacity-90"
+              } disabled:opacity-60`}
+            >
+              {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Salvando...</>
+                : saved ? <><CheckCircle2 className="h-3.5 w-3.5" /> Salvo</>
+                : <><Save className="h-3.5 w-3.5" /> Salvar Blueprint</>}
+            </button>
+          )}
+          <button
+            onClick={handleExport}
+            className="h-9 px-4 rounded-lg border border-border bg-secondary text-sm font-medium flex items-center gap-2 hover:bg-secondary/80 transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" /> Exportar .md
+          </button>
+        </div>
       </div>
 
       <div className="px-6 py-5 border-b border-border">

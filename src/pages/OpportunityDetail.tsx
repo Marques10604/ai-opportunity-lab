@@ -47,6 +47,8 @@ export default function OpportunityDetail() {
   const [saved, setSaved] = useState(false);
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [generatingBlueprint, setGeneratingBlueprint] = useState(false);
+  const [savingBlueprint, setSavingBlueprint] = useState(false);
+  const [savedBlueprint, setSavedBlueprint] = useState(false);
 
   const opp = opportunities?.find((o) => o.id === id);
 
@@ -70,64 +72,142 @@ export default function OpportunityDetail() {
     setGenerating(true);
     setSaved(false);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-mvp-plan", {
-        body: {
-          title: opp.title,
-          niche: opp.niche,
-          problem: opp.problem,
-          solution: opp.solution,
-          competition_level: opp.competition_level,
-          market_score: opp.market_score,
-        },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setMvpPlan(data);
+      const prompt = `Gere um plano MVP detalhado para uma ideia de SaaS com as seguintes informações:
+Nome: ${opp.title}
+Nicho: ${opp.niche}
+Problema: ${opp.problem}
+Solução: ${opp.solution}
+
+Retorne APENAS um JSON válido seguindo exatamente esta estrutura:
+{
+  "product_concept": "string",
+  "core_features": [{"name": "string", "description": "string"}],
+  "tech_stack": [{"name": "string", "purpose": "string"}],
+  "ui_structure": [{"page": "string", "description": "string"}],
+  "roadmap": [{"phase": "string", "duration": "string", "tasks": ["string"]}],
+  "monetization": "string"
+}`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        }
+      );
+
+      const data = await response.json();
+      if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        throw new Error("Resposta inválida do Gemini");
+      }
+      
+      const text = data.candidates[0].content.parts[0].text;
+      const cleanJson = text.replace(/```json|```/g, "").trim();
+      const result = JSON.parse(cleanJson);
+      
+      setMvpPlan(result);
+      toast.success("Plano MVP gerado com sucesso!");
     } catch (err: any) {
       console.error("MVP generation error:", err);
-      toast.error(err?.message || "Falha ao gerar plano MVP");
+      toast.error(err?.message || "Falha ao gerar plano MVP via Gemini");
+    } finally {
+      setGenerating(false);
     }
-    setGenerating(false);
   };
 
   const handleSave = async () => {
     if (!mvpPlan || !user || !opp) return;
     setSaving(true);
-    await supabase.from("mvp_plans").insert({
-      user_id: user.id,
-      opportunity_id: opp.id,
-      product_concept: mvpPlan.product_concept,
-      core_features: mvpPlan.core_features as unknown as Json,
-      tech_stack: mvpPlan.tech_stack as unknown as Json,
-      ui_structure: mvpPlan.ui_structure as unknown as Json,
-      roadmap: mvpPlan.roadmap as unknown as Json,
-      monetization: mvpPlan.monetization,
-    });
-    setSaving(false);
-    setSaved(true);
+    try {
+      await supabase.from("mvp_plans").insert({
+        user_id: user.id,
+        opportunity_id: opp.id,
+        product_concept: mvpPlan.product_concept,
+        core_features: mvpPlan.core_features as unknown as Json,
+        tech_stack: mvpPlan.tech_stack as unknown as Json,
+        ui_structure: mvpPlan.ui_structure as unknown as Json,
+        roadmap: mvpPlan.roadmap as unknown as Json,
+        monetization: mvpPlan.monetization,
+      });
+      setSaved(true);
+      toast.success("Plano MVP salvo!");
+    } catch (err: any) {
+      console.error("Save MVP error:", err);
+      toast.error("Falha ao salvar plano");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleBuildMvp = async () => {
     setGeneratingBlueprint(true);
+    setSavedBlueprint(false);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-blueprint", {
-        body: {
-          title: opp.title,
-          niche: opp.niche,
-          problem: opp.problem,
-          solution: opp.solution,
-          competition_level: opp.competition_level,
-          market_score: opp.market_score,
-        },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setBlueprint(data);
+      const prompt = `Gere um blueprint técnico detalhado para o MVP do SaaS:
+Nome: ${opp.title}
+Solução: ${opp.solution}
+
+Retorne APENAS um JSON válido seguindo exatamente esta estrutura:
+{
+  "product_spec": "string",
+  "core_features": [{"name": "string", "description": "string", "priority": "P0" | "P1" | "P2"}],
+  "ui_structure": [{"page": "string", "purpose": "string", "components": ["string"]}],
+  "database_schema": [{"table_name": "string", "purpose": "string", "columns": [{"name": "string", "type": "string", "nullable": boolean}]}],
+  "api_endpoints": [{"method": "GET" | "POST" | "PUT" | "PATCH" | "DELETE", "path": "string", "description": "string", "request_body": "string", "response": "string"}],
+  "architecture_notes": ["string"]
+}`;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        }
+      );
+
+      const data = await response.json();
+      if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        throw new Error("Resposta inválida do Gemini");
+      }
+
+      const text = data.candidates[0].content.parts[0].text;
+      const cleanJson = text.replace(/```json|```/g, "").trim();
+      const result = JSON.parse(cleanJson);
+      
+      setBlueprint(result);
+      toast.success("Blueprint gerado!");
     } catch (err: any) {
       console.error("Blueprint generation error:", err);
-      toast.error(err?.message || "Falha ao gerar blueprint");
+      toast.error(err?.message || "Falha ao gerar blueprint via Gemini");
+    } finally {
+      setGeneratingBlueprint(false);
     }
-    setGeneratingBlueprint(false);
+  };
+
+  const handleSaveBlueprint = async () => {
+    if (!blueprint || !user || !opp) return;
+    setSavingBlueprint(true);
+    try {
+      await supabase.from("blueprints").insert({
+        user_id: user.id,
+        opportunity_id: opp.id,
+        specification: blueprint.product_spec,
+        features: blueprint.core_features as unknown as Json,
+        ui_structure: blueprint.ui_structure as unknown as Json,
+        database_schema: blueprint.database_schema as unknown as Json,
+        api_endpoints: blueprint.api_endpoints as unknown as Json,
+        architecture_notes: blueprint.architecture_notes as unknown as Json,
+      });
+      setSavedBlueprint(true);
+      toast.success("Blueprint salvo com sucesso!");
+    } catch (err: any) {
+      console.error("Save blueprint error:", err);
+      toast.error("Falha ao salvar blueprint");
+    } finally {
+      setSavingBlueprint(false);
+    }
   };
 
   return (
@@ -362,7 +442,13 @@ export default function OpportunityDetail() {
       {/* Blueprint Display */}
       <AnimatePresence>
         {blueprint && (
-          <BlueprintView blueprint={blueprint} opportunityTitle={opp.title} />
+          <BlueprintView 
+            blueprint={blueprint} 
+            opportunityTitle={opp.title} 
+            onSave={handleSaveBlueprint}
+            saving={savingBlueprint}
+            saved={savedBlueprint}
+          />
         )}
       </AnimatePresence>
     </div>

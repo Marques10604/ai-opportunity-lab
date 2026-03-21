@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useOpportunities } from "@/hooks/useSupabaseData";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Lightbulb, Network, Filter } from "lucide-react";
+import { ArrowRight, Lightbulb, Network, Filter, Zap } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -36,33 +36,21 @@ export default function Opportunities() {
     enabled: !!user,
   });
 
-  const patternMap = new Map(patterns.map((p) => [p.id, p.pattern_title]));
-
-  const filtered = (opportunities || []).filter((opp: any) => {
-    if (filter === "from_pattern") return !!opp.source_pattern_id;
-    if (filter === "manual") return !opp.source_pattern_id;
-    return true;
-  });
-
-  const patternCount = (opportunities || []).filter((o: any) => !!o.source_pattern_id).length;
+  const radarOpportunities = (opportunities || []).filter((o: any) => !!o.detected_problem_id);
+  const filtered = radarOpportunities;
+  const radarCount = radarOpportunities.length;
 
   return (
     <div className="space-y-6 max-w-5xl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Oportunidades</h1>
-        <p className="text-sm text-muted-foreground mt-1">Oportunidades SaaS geradas por IA, classificadas por potencial</p>
+        <h1 className="text-2xl font-bold tracking-tight">Oportunidades de SaaS</h1>
+        <p className="text-sm text-muted-foreground mt-1">Oportunidades SaaS que vieram do Radar de Descoberta</p>
       </div>
 
       <div className="flex gap-2 items-center">
         <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-        <Button variant={filter === "all" ? "default" : "outline"} size="sm" onClick={() => setFilter("all")} className="h-7 text-xs">
-          Todas ({opportunities?.length || 0})
-        </Button>
-        <Button variant={filter === "from_pattern" ? "default" : "outline"} size="sm" onClick={() => setFilter("from_pattern")} className="h-7 text-xs gap-1">
-          <Network className="h-3 w-3" /> De Padrões ({patternCount})
-        </Button>
-        <Button variant={filter === "manual" ? "default" : "outline"} size="sm" onClick={() => setFilter("manual")} className="h-7 text-xs">
-          Pipeline ({(opportunities?.length || 0) - patternCount})
+        <Button variant="default" size="sm" className="h-7 text-xs gap-1 cursor-default pointer-events-none">
+          <Zap className="h-3 w-3" /> Radar ({radarCount})
         </Button>
       </div>
 
@@ -92,11 +80,9 @@ export default function Opportunities() {
                     <span className="text-[10px] font-mono text-muted-foreground">{opp.niche}</span>
                     <span className="text-[10px] text-muted-foreground">·</span>
                     <span className="text-[10px] text-muted-foreground">Concorrência: {competitionLabel(opp.competition_level)}</span>
-                    {patternName && (
-                      <Badge variant="outline" className="text-[9px] h-5 gap-1 ml-1 border-primary/30 text-primary">
-                        <Network className="h-2.5 w-2.5" /> {patternName}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className="text-[9px] h-5 gap-1 ml-1 border-emerald-500/30 text-emerald-500">
+                      <Zap className="h-2.5 w-2.5 fill-current" /> Radar
+                    </Badge>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">

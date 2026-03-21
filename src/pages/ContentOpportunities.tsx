@@ -109,10 +109,16 @@ export default function ContentOpportunities() {
       ) : filtered.length === 0 ? (
         <div className="rounded-xl border border-border bg-card p-12 text-center">
           <MessageSquare className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Nenhum conteúdo encontrado</p>
+          <p className="text-sm text-muted-foreground font-medium">Nenhum conteúdo gerado ainda</p>
           <p className="text-xs text-muted-foreground/60 mt-1">
-            Execute o pipeline para gerar conteúdos
+            Selecione um problema no Radar de Oportunidades para gerar conteúdo.
           </p>
+          <button 
+            onClick={() => navigate("/radar")}
+            className="mt-4 text-sm text-primary hover:underline font-medium"
+          >
+            Ir para o Radar de Oportunidades
+          </button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -154,19 +160,21 @@ export default function ContentOpportunities() {
                       </div>
                     </div>
                     <div className="flex items-center gap-4 mt-3">
-                      <div className="flex-1 max-w-[200px]">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] text-muted-foreground">Pontuação Viral</span>
-                          <span className="text-[10px] font-mono font-medium">{score}</span>
+                      {score > 0 && (
+                        <div className="flex-1 max-w-[200px]">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] text-muted-foreground">Pontuação Viral</span>
+                            <span className="text-[10px] font-mono font-medium">{score}</span>
+                          </div>
+                          <Progress
+                            value={score}
+                            className="h-1.5"
+                            style={{
+                              ["--progress-background" as any]: score >= 70 ? "hsl(var(--success))" : score >= 40 ? "hsl(var(--warning))" : "hsl(var(--muted-foreground))",
+                            }}
+                          />
                         </div>
-                        <Progress
-                          value={score}
-                          className="h-1.5"
-                          style={{
-                            ["--progress-background" as any]: score >= 70 ? "hsl(var(--success))" : score >= 40 ? "hsl(var(--warning))" : "hsl(var(--muted-foreground))",
-                          }}
-                        />
-                      </div>
+                      )}
                       <span className="text-[10px] text-muted-foreground/60 font-mono">
                         {new Date(content.created_at).toLocaleDateString("pt-BR")}
                       </span>

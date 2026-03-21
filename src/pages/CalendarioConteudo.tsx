@@ -18,6 +18,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export default function CalendarioConteudo() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [isLoading, setIsLoading] = useState(true);
   const [roteiros, setRoteiros] = useState<any[]>([]);
@@ -39,24 +41,32 @@ export default function CalendarioConteudo() {
   const [notaInput, setNotaInput] = useState("");
 
   const fetchRoteiros = async () => {
+    if (!user) return;
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('calendario_conteudo')
         .select('*')
-        .eq('user_id', 'default_user')
-        .order('dia', { ascending: true });
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       
       if (data && data.length > 0) {
-        // Group by batch_id, show latest
-        const latestBatchId = data[data.length - 1].batch_id; // assuming chronological insertion order
-        // Better: sort by created_at desc to find latest batch_id
-        const batches = [...data].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        const targetBatchId = batches[0].batch_id;
+        // Find latest batch or just use all if no batch_id available
+        const latestBatchId = data[0].batch_id;
         
-        const filtered = data.filter(d => d.batch_id === targetBatchId).sort((a, b) => a.dia - b.dia);
+        let filtered = data;
+        if (latestBatchId) {
+          filtered = data.filter(d => d.batch_id === latestBatchId);
+        }
+        
+        // Sort by dia (if exists) then by created_at
+        filtered.sort((a, b) => {
+          if (a.dia && b.dia) return a.dia - b.dia;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+        
         setRoteiros(filtered);
       } else {
         setRoteiros([]);
@@ -70,8 +80,10 @@ export default function CalendarioConteudo() {
   };
 
   useEffect(() => {
-    fetchRoteiros();
-  }, []);
+    if (user) {
+      fetchRoteiros();
+    }
+  }, [user]);
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
@@ -252,7 +264,7 @@ export default function CalendarioConteudo() {
                     <CardHeader className="p-4 pb-0">
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
-                          Dia {roteiro.dia} · {new Date(roteiro.data_publicacao).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
+                          {roteiro.dia ? `Dia ${roteiro.dia}` : 'Extra'} · {roteiro.data_publicacao ? new Date(roteiro.data_publicacao).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : new Date(roteiro.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
                         </span>
                         {getStatusBadge(roteiro.status)}
                       </div>

@@ -1,118 +1,90 @@
-import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Lightbulb, Loader2, Wrench, Film, ArrowRight, Sparkles, Zap } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { Lightbulb, ArrowRight, Sparkles, ArrowLeft } from "lucide-react";
+import { useSelectedProblem } from "@/contexts/SelectedProblemContext";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export default function ContentIdeas() {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { selectedProblem, selectedPipelineData } = useSelectedProblem();
 
-  const { data: combinations = [], isLoading } = useQuery({
-    queryKey: ["tool_combinations", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("tool_combinations")
-        .select("*")
-        .not("content_idea", "is", null)
-        .order("innovation_score", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user,
-  });
+  if (!selectedProblem) {
+    return (
+      <div className="space-y-6 max-w-7xl">
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <Lightbulb className="h-6 w-6 text-warning" /> Ideias de Conteúdo
+        </h1>
+        <div className="flex flex-col items-center justify-center py-20 text-center bg-card/20 rounded-2xl border border-dashed border-border mt-8 space-y-4">
+          <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+            <Lightbulb className="h-10 w-10 text-warning" />
+          </div>
+          <h2 className="text-lg font-bold">Nenhum problema selecionado</h2>
+          <p className="text-muted-foreground max-w-md mx-auto text-sm">
+            Selecione um problema no Radar de Oportunidades para gerar conteúdo.
+          </p>
+          <Button onClick={() => navigate('/radar')} className="mt-4 gap-2">
+            Ir para o Radar <ArrowRight className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-  const { data: contentOps = [] } = useQuery({
-    queryKey: ["content_opportunities", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("content_opportunities").select("*").order("created_at", { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  const allIdeas = [
-    ...combinations.filter((c: any) => c.content_idea).map((c: any) => ({
-      type: "solution" as const,
-      id: c.id,
-      title: c.solution_name,
-      idea: c.content_idea,
-      tools: Array.isArray(c.tools_used) ? c.tools_used : [],
-      score: c.innovation_score || 0,
-      date: c.created_at,
-    })),
-    ...contentOps.map((c: any) => ({
-      type: "content" as const,
-      id: c.id,
-      title: c.titulo_conteudo,
-      idea: c.gancho || c.roteiro_curto || "",
-      tools: [],
-      score: c.pontuacao_viral || 0,
-      date: c.created_at,
-    })),
-  ].sort((a, b) => b.score - a.score);
+  const ideas = selectedPipelineData?.content_ideas || [];
 
   return (
     <div className="space-y-6 max-w-7xl">
+      <Button variant="ghost" onClick={() => navigate('/radar')} className="pl-0 text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Voltar ao Radar
+      </Button>
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
           <Lightbulb className="h-6 w-6 text-warning" />
           Ideias de Conteúdo
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Ideias de conteúdo geradas automaticamente a partir de problemas, ferramentas e soluções.
-        </p>
+        <div className="mt-2 flex items-center gap-2 flex-wrap bg-secondary/30 p-3 rounded-lg border border-border">
+          <span className="text-sm font-medium text-muted-foreground">Conteúdo gerado para: <span className="text-foreground font-bold">{selectedProblem.problem_title}</span></span>
+          <Badge variant="secondary" className="text-[10px]">{selectedProblem.niche_category || "Geral"}</Badge>
+        </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : allIdeas.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-card/50 p-12 text-center space-y-3">
-          <Lightbulb className="h-10 w-10 text-muted-foreground/30 mx-auto" />
-          <p className="text-sm text-muted-foreground">Nenhuma ideia de conteúdo gerada ainda.</p>
-          <p className="text-xs text-muted-foreground/60">Use a Descoberta de Ferramentas ou o Caçador de Problemas para gerar ideias automaticamente.</p>
-        </div>
-      ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {allIdeas.map((idea, i) => (
-            <motion.div
-              key={idea.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.03 }}
-              className="rounded-xl border border-border bg-card p-5 space-y-3 hover:border-warning/30 transition-colors"
-            >
-              <div className="flex items-start justify-between">
-                <Badge variant={idea.type === "solution" ? "secondary" : "outline"} className="text-[10px]">
-                  {idea.type === "solution" ? "💡 Solução" : "📱 Conteúdo"}
-                </Badge>
-                <div className="flex items-center gap-1 text-[10px] font-mono">
-                  <Sparkles className="h-3 w-3 text-warning" />
-                  <span className="font-bold">{idea.score}</span>
-                </div>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {ideas.map((idea: any, i: number) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.03 }}
+            className="rounded-xl border border-border bg-card p-5 space-y-3 hover:border-warning/30 transition-colors"
+          >
+            <div className="flex items-start justify-between">
+              <Badge variant="outline" className="text-[10px] capitalize">
+                {idea.angle}
+              </Badge>
+              <div className="flex items-center gap-1 text-[10px] font-mono">
+                <Sparkles className="h-3 w-3 text-warning" />
+                <span className="font-bold">IA</span>
               </div>
+            </div>
 
-              <h3 className="text-sm font-bold">{idea.title}</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">{idea.idea}</p>
-
-              {idea.tools.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {idea.tools.map((tool: string, j: number) => (
-                    <span key={j} className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[9px] font-medium">{tool}</span>
-                  ))}
-                </div>
-              )}
-
-              <div className="text-[10px] text-muted-foreground/50">
-                {new Date(idea.date).toLocaleDateString("pt-BR")}
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
+            <h3 className="text-sm font-bold">{idea.title}</h3>
+            
+            <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
+              {['instagram', 'tiktok', 'linkedin', 'twitter', 'youtube'].map(platform => {
+                const text = idea[platform];
+                if (!text) return null;
+                const pName = platform === 'youtube' ? 'YouTube' : platform === 'instagram' ? 'Instagram' : platform === 'tiktok' ? 'TikTok' : platform === 'twitter' ? 'X (Twitter)' : 'LinkedIn';
+                return (
+                  <div key={platform} className="text-xs pb-1">
+                    <span className="font-bold text-muted-foreground">{pName}:</span> <span className="text-muted-foreground italic line-clamp-2">{Array.isArray(text) ? text.join(' ') : text}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 }

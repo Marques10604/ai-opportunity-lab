@@ -65,20 +65,16 @@ const navSections: (NavItem | NavSection)[] = [
     items: [
       { title: "Ideias de Conteúdo", url: "/content/ideas", icon: Lightbulb },
       { title: "Roteiros de Vídeo", url: "/content/scripts", icon: Film },
-      { title: "Conteúdos Gerados", url: "/content/generated", icon: MessageSquare },
       { title: "Motor de 5 Ângulos", url: "/content/angles", icon: Columns3 },
       { title: "Conteúdo por Plataforma", url: "/content/platforms", icon: Megaphone },
       { title: "Calendário de Conteúdo", url: "/content/calendar", icon: CalendarDays },
     ],
   },
   {
-
     label: "Laboratório SaaS",
     items: [
       { title: "Oportunidades de SaaS", url: "/saas/opportunities", icon: Lightbulb },
-      { title: "Ideias de Produto", url: "/saas/ideas", icon: Sparkles },
-      { title: "Criar MVP", url: "/saas/mvp", icon: Rocket },
-      { title: "Blueprint Técnico", url: "/saas/blueprint", icon: Layers },
+      { title: "Landing Page", url: "/saas/landing", icon: Rocket },
     ],
   },
   {
@@ -102,7 +98,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const isActive = (path: string) => location.pathname === path;
   
   const [pendentesCount, setPendentesCount] = useState(0);
@@ -113,11 +109,11 @@ export function AppSidebar() {
         .from('calendario_conteudo')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pendente')
-        .eq('user_id', 'default_user');
+        .eq('user_id', user?.id || 'default_user');
       if (count !== null) setPendentesCount(count);
     };
     
-    fetchPendentes();
+    if (user) fetchPendentes();
     
     const channel = supabase.channel('calendario_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'calendario_conteudo' }, fetchPendentes)
@@ -126,7 +122,7 @@ export function AppSidebar() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user]);
 
   return (
     <Sidebar collapsible="icon" className="border-r border-border">

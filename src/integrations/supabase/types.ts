@@ -124,6 +124,157 @@ export type Database = {
           },
         ]
       }
+      calendario_conteudo: {
+        Row: {
+          batch_id: string | null
+          created_at: string
+          cta: string | null
+          data_publicacao: string | null
+          dia: number | null
+          dor_tipo: string | null
+          dor_titulo: string
+          duracao_estimada: string | null
+          hashtags: string[] | null
+          hook: string | null
+          id: string
+          plataforma: string | null
+          produto: string | null
+          roteiro_narracao: string | null
+          roteiro_tela: string | null
+          status: string | null
+          angulo: string | null
+          user_id: string
+        }
+        Insert: {
+          batch_id?: string | null
+          created_at?: string
+          cta?: string | null
+          data_publicacao?: string | null
+          dia?: number | null
+          dor_tipo?: string | null
+          dor_titulo: string
+          duracao_estimada?: string | null
+          hashtags?: string[] | null
+          hook?: string | null
+          id?: string
+          plataforma?: string | null
+          produto?: string | null
+          roteiro_narracao?: string | null
+          roteiro_tela?: string | null
+          status?: string | null
+          angulo?: string | null
+          user_id: string
+        }
+        Update: {
+          batch_id?: string | null
+          created_at?: string
+          cta?: string | null
+          data_publicacao?: string | null
+          dia?: number | null
+          dor_tipo?: string | null
+          dor_titulo?: string
+          duracao_estimada?: string | null
+          hashtags?: string[] | null
+          hook?: string | null
+          id?: string
+          plataforma?: string | null
+          produto?: string | null
+          roteiro_narracao?: string | null
+          roteiro_tela?: string | null
+          status?: string | null
+          angulo?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      blueprints: {
+        Row: {
+          id: string
+          created_at: string
+          user_id: string
+          opportunity_id: string | null
+          specification: string | null
+          features: Json | null
+          ui_structure: Json | null
+          database_schema: Json | null
+          api_endpoints: Json | null
+          architecture_notes: Json | null
+        }
+        Insert: {
+          id?: string
+          created_at?: string
+          user_id: string
+          opportunity_id?: string | null
+          specification?: string | null
+          features?: Json | null
+          ui_structure?: Json | null
+          database_schema?: Json | null
+          api_endpoints?: Json | null
+          architecture_notes?: Json | null
+        }
+        Update: {
+          id?: string
+          created_at?: string
+          user_id?: string
+          opportunity_id?: string | null
+          specification?: string | null
+          features?: Json | null
+          ui_structure?: Json | null
+          database_schema?: Json | null
+          api_endpoints?: Json | null
+          architecture_notes?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blueprints_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      landing_pages: {
+        Row: {
+          category: string
+          created_at: string
+          html_content: string
+          html_filename: string
+          id: string
+          opportunity_id: string | null
+          opportunity_title: string
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          html_content: string
+          html_filename: string
+          id?: string
+          opportunity_id?: string | null
+          opportunity_title: string
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          html_content?: string
+          html_filename?: string
+          id?: string
+          opportunity_id?: string | null
+          opportunity_title?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_pages_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       detected_problems: {
         Row: {
           complaint_examples: Json | null
@@ -256,6 +407,7 @@ export type Database = {
         Row: {
           competition_level: string | null
           created_at: string
+          detected_problem_id: string | null
           difficulty_level: string | null
           id: string
           market_score: number | null
@@ -269,6 +421,7 @@ export type Database = {
         Insert: {
           competition_level?: string | null
           created_at?: string
+          detected_problem_id?: string | null
           difficulty_level?: string | null
           id?: string
           market_score?: number | null
@@ -282,6 +435,7 @@ export type Database = {
         Update: {
           competition_level?: string | null
           created_at?: string
+          detected_problem_id?: string | null
           difficulty_level?: string | null
           id?: string
           market_score?: number | null
