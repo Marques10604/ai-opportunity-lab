@@ -36,9 +36,8 @@ export default function Opportunities() {
     enabled: !!user,
   });
 
-  const radarOpportunities = (opportunities || []).filter((o: any) => !!o.detected_problem_id);
-  const filtered = radarOpportunities;
-  const radarCount = radarOpportunities.length;
+  const filtered = opportunities || [];
+  const radarCount = (opportunities || []).filter((o: any) => !!o.detected_problem_id).length;
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -50,7 +49,7 @@ export default function Opportunities() {
       <div className="flex gap-2 items-center">
         <Filter className="h-3.5 w-3.5 text-muted-foreground" />
         <Button variant="default" size="sm" className="h-7 text-xs gap-1 cursor-default pointer-events-none">
-          <Zap className="h-3 w-3" /> Radar ({radarCount})
+          Todas ({filtered.length})
         </Button>
       </div>
 
@@ -80,9 +79,11 @@ export default function Opportunities() {
                     <span className="text-[10px] font-mono text-muted-foreground">{opp.niche}</span>
                     <span className="text-[10px] text-muted-foreground">·</span>
                     <span className="text-[10px] text-muted-foreground">Concorrência: {competitionLabel(opp.competition_level)}</span>
-                    <Badge variant="outline" className="text-[9px] h-5 gap-1 ml-1 border-emerald-500/30 text-emerald-500">
-                      <Zap className="h-2.5 w-2.5 fill-current" /> Radar
-                    </Badge>
+                    {!!opp.detected_problem_id && (
+                      <Badge variant="outline" className="text-[9px] h-5 gap-1 ml-1 border-emerald-500/30 text-emerald-500">
+                        <Zap className="h-2.5 w-2.5 fill-current" /> Radar
+                      </Badge>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">

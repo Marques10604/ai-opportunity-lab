@@ -177,13 +177,13 @@ export default function CalendarioConteudo() {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
+    return <div className="py-20 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
   }
 
   const stats = getStats();
 
   return (
-    <div className="min-h-screen pb-16">
+    <div className="pb-16">
       {/* Top Bar */}
       <div className="bg-card border-b border-border sticky top-0 z-10 w-full mb-8">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">

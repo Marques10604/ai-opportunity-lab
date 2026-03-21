@@ -175,17 +175,29 @@ export default function OpportunityRadar() {
   const [isGeneratingFull, setIsGeneratingFull] = useState(false);
 
   const handleSelectProblem = async (problemId: string) => {
-    setSelectedProblem(problemId);
-    setDiscoveryResult(null);
-
-    const problemData = problems.find(p => p.id === problemId);
-    if (!problemData || !user) return;
-
-    setDiscovering(true);
-    setIsGeneratingFull(true);
-    
+    console.log("Iniciando handleSelectProblem para ID:", problemId);
     try {
-      const prompt = `Você é um estrategista de conteúdo e negócios AI-First.
+      // Limpeza de estado assíncrona para evitar conflitos de renderização no React
+      await new Promise(resolve => setTimeout(resolve, 10));
+      if (typeof setSelectedPipelineData === 'function') {
+        setSelectedPipelineData(null);
+      }
+      setSelectedProblem(problemId);
+      setDiscoveryResult(null);
+
+      const problemData = problems.find(p => p.id === problemId);
+      if (!problemData) {
+        throw new Error("Dados do problema não encontrados na base local.");
+      }
+      if (!user) {
+        throw new Error("Sessão de usuário não encontrada. Faça login novamente.");
+      }
+
+      setDiscovering(true);
+      setIsGeneratingFull(true);
+      
+      try {
+        const prompt = `Você é um estrategista de conteúdo e negócios AI-First.
 Analise o problema: "${problemData.problem_title}" (${problemData.problem_description || "N/A"}) no nicho "${problemData.niche_category || "Geral"}".
 
 Gere um pipeline completo em um único JSON com a seguinte estrutura:
@@ -236,141 +248,156 @@ Gere 5 content_ideas (um para cada 'angle').
 Gere 2-3 combinations.
 Responda APENAS com o JSON válido em Português (Brasil).`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            system_instruction: {
-              parts: [{ text: COPYWRITER_SYSTEM_PROMPT }]
-            }
-          })
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              system_instruction: {
+                parts: [{ text: COPYWRITER_SYSTEM_PROMPT }]
+              }
+            })
+          }
+        );
+
+        const resData = await response.json();
+
+        if (!response.ok) {
+          const errorMsg = resData.error?.message || response.statusText || "Erro desconhecido";
+          throw new Error(`Falha na API do Gemini: ${errorMsg}`);
         }
-      );
 
-      const resData = await response.json();
-
-      if (!response.ok) {
-        const errorMsg = resData.error?.message || response.statusText || "Erro desconhecido";
-        throw new Error(`Falha na API do Gemini: ${errorMsg}`);
-      }
-
-      const aiText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!aiText) throw new Error("Resposta vazia");
-      
-      const cleanedText = aiText.replace(/```json|```/g, "").trim();
-      const result = JSON.parse(cleanedText);
-
-      // 1. Save Tools
-      if (result.discovered_tools) {
-        await supabase.from("tools").insert(
-          result.discovered_tools.map((t: any) => ({
-            user_id: user.id,
-            tool_name: t.tool_name,
-            category: t.category,
-            description: t.description,
-            website: t.website || ""
-          }))
-        );
-      }
-
-      // 2. Save Combinations
-      if (result.combinations) {
-        await supabase.from("tool_combinations").insert(
-          result.combinations.map((c: any) => ({
-            user_id: user.id,
-            source_problem_id: problemId,
-            solution_name: c.solution_name,
-            solution_description: c.solution_description,
-            tools_used: c.tools_used,
-            expected_result: c.expected_result,
-            innovation_score: c.innovation_score,
-            content_idea: c.content_idea,
-            video_script: c.video_script,
-            business_idea: c.business_idea
-          }))
-        );
-      }
-
-      // 3. Save Content Ideas (to calendario_conteudo for each platform)
-      if (result.content_ideas) {
-        const calendarRows: any[] = [];
-        const platforms = ["instagram", "tiktok", "linkedin", "twitter", "youtube"];
+        const aiText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!aiText) throw new Error("A IA retornou uma resposta vazia");
         
-        result.content_ideas.forEach((idea: any) => {
-          platforms.forEach(platform => {
-            const platformKey = platform === 'twitter' ? 'x' : platform;
-            const pContent = result.platform_content?.[platform] || {};
-            
-            calendarRows.push({
+        const cleanedText = aiText.replace(/```json|```/g, "").trim();
+        const result = JSON.parse(cleanedText);
+
+        // 1. Save Tools
+        if (result.discovered_tools) {
+          const { error } = await supabase.from("tools").insert(
+            result.discovered_tools.map((t: any) => ({
               user_id: user.id,
-              dor_titulo: idea.title,
-              angulo: idea.angle,
-              plataforma: platformKey,
-              roteiro_narracao: typeof idea[platform] === 'string' ? idea[platform] : JSON.stringify(idea[platform]),
-              roteiro_tela: pContent.style || "",
-              duracao_estimada: pContent.duration || "",
-              hook: platform === 'instagram' && typeof idea.instagram === 'string' ? idea.instagram.substring(0, 100) : idea.title,
-              status: 'pendente'
+              tool_name: t.tool_name,
+              category: t.category,
+              description: t.description,
+              website: t.website || ""
+            }))
+          );
+          if (error) console.error("Erro ao salvar tools:", error);
+        }
+
+        // 2. Save Combinations
+        if (result.combinations) {
+          const { error } = await supabase.from("tool_combinations").insert(
+            result.combinations.map((c: any) => ({
+              user_id: user.id,
+              source_problem_id: problemId,
+              solution_name: c.solution_name,
+              solution_description: c.solution_description,
+              tools_used: c.tools_used,
+              expected_result: c.expected_result,
+              innovation_score: c.innovation_score,
+              content_idea: c.content_idea,
+              video_script: c.video_script,
+              business_idea: c.business_idea
+            }))
+          );
+          if (error) console.error("Erro ao salvar combinações:", error);
+        }
+
+        // 3. Save Content Ideas (to calendario_conteudo for each platform)
+        if (result.content_ideas) {
+          const calendarRows: any[] = [];
+          const platforms = ["instagram", "tiktok", "linkedin", "twitter", "youtube"];
+          
+          result.content_ideas.forEach((idea: any) => {
+            platforms.forEach(platform => {
+              const platformKey = platform === 'twitter' ? 'x' : platform;
+              const pContent = result.platform_content?.[platform] || {};
+              
+              calendarRows.push({
+                user_id: user.id,
+                dor_titulo: idea.title,
+                angulo: idea.angle,
+                plataforma: platformKey,
+                roteiro_narracao: typeof idea[platform] === 'string' ? idea[platform] : JSON.stringify(idea[platform]),
+                roteiro_tela: pContent.style || "",
+                duracao_estimada: pContent.duration || "",
+                hook: platform === 'instagram' && typeof idea.instagram === 'string' ? idea.instagram.substring(0, 100) : idea.title,
+                status: 'pendente'
+              });
             });
           });
-        });
-        await supabase.from("calendario_conteudo").insert(calendarRows);
-      }
-      
-      // 4. Save to content_opportunities
-      await supabase.from("content_opportunities").insert({
-        user_id: user.id,
-        titulo_conteudo: problemData.problem_title,
-        tipo_conteudo: "Pipeline Completo",
-        gancho: result.video_script?.hook,
-        roteiro_curto: result.video_script?.solution,
-        source_problem_id: problemId
-      });
-
-      // 5. Automatic Save as Opportunity (Sync with Lab)
-      if (result.combinations && result.combinations.length > 0) {
-        const firstCombo = result.combinations[0];
-        const mScore = problemData.viral_score || 50;
+          const { error } = await supabase.from("calendario_conteudo").insert(calendarRows);
+          if (error) console.error("Erro ao salvar calendário:", error);
+        }
         
-        let compLevel = 'Média';
-        if (mScore > 80) compLevel = 'Baixa';
-        else if (mScore < 60) compLevel = 'Alta';
-
-        await supabase.from("opportunities").insert({
+        // 4. Save to content_opportunities
+        const { error: oppError } = await supabase.from("content_opportunities").insert({
           user_id: user.id,
-          title: firstCombo.solution_name,
-          problem: problemData.problem_title,
-          solution: firstCombo.solution_description,
-          niche: problemData.niche_category || "Geral",
-          market_score: mScore,
-          competition_level: compLevel,
-          difficulty_level: 'Média',
-          detected_problem_id: problemId
+          titulo_conteudo: problemData.problem_title,
+          tipo_conteudo: "Pipeline Completo",
+          gancho: result.video_script?.hook,
+          roteiro_curto: result.video_script?.solution,
+          source_problem_id: problemId
         });
+        if (oppError) console.error("Erro ao salvar content opportunities:", oppError);
+
+        // 5. Automatic Save as Opportunity (Sync with Lab)
+        if (result.combinations && result.combinations.length > 0) {
+          const firstCombo = result.combinations[0];
+          const mScore = problemData.viral_score || 50;
+          
+          let compLevel = 'Média';
+          if (mScore > 80) compLevel = 'Baixa';
+          else if (mScore < 60) compLevel = 'Alta';
+
+          const { error: oppLabError } = await supabase.from("opportunities").insert({
+            user_id: user.id,
+            title: firstCombo.solution_name,
+            problem: problemData.problem_title,
+            solution: firstCombo.solution_description,
+            niche: problemData.niche_category || "Geral",
+            market_score: mScore,
+            competition_level: compLevel,
+            difficulty_level: 'Média',
+            detected_problem_id: problemId
+          });
+          if (oppLabError) console.error("Erro ao salvar opportunity (Lab):", oppLabError);
+          else toast.success("Oportunidade salva no Laboratório SaaS!");
+        }
+
+        setDiscoveryResult(result);
+        setGlobalProblem(problemData);
+        setSelectedPipelineData(result);
+
+        queryClient.invalidateQueries({ queryKey: ["tools"] });
+        queryClient.invalidateQueries({ queryKey: ["tool_combinations"] });
+        queryClient.invalidateQueries({ queryKey: ["calendario_conteudo"] });
+        queryClient.invalidateQueries({ queryKey: ["content_opportunities"] });
+        queryClient.invalidateQueries({ queryKey: ["opportunities"] });
         
-        toast.success("Oportunidade salva no Laboratório SaaS!");
+        toast.success("Conteúdo gerado! Todas as abas foram preenchidas.");
+        
+        setTimeout(() => {
+          document.getElementById('pipeline-results')?.scrollIntoView({ behavior: 'smooth' });
+        }, 300);
+
+      } catch (err: any) {
+        console.error("Erro na execução do pipeline:", err);
+        toast.error(err.message || "Erro ao gerar pipeline completo");
+      } finally {
+        // Garantir que as flags de loading são desligadas em qualquer cenário de sucesso ou erro do pipeline
+        setDiscovering(false);
+        setIsGeneratingFull(false);
       }
-
-      setDiscoveryResult(result);
-      setGlobalProblem(problemData);
-      setSelectedPipelineData(result);
-
-      queryClient.invalidateQueries({ queryKey: ["tools"] });
-      queryClient.invalidateQueries({ queryKey: ["tool_combinations"] });
-      queryClient.invalidateQueries({ queryKey: ["calendario_conteudo"] });
-      queryClient.invalidateQueries({ queryKey: ["content_opportunities"] });
-      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
-      
-      toast.success("Conteúdo gerado! Todas as abas foram preenchidas.");
-      
-      setTimeout(() => {
-        document.getElementById('pipeline-results')?.scrollIntoView({ behavior: 'smooth' });
-      }, 300);
-
-    } finally {
+    } catch (err: any) {
+      console.error("Erro crítico ao inicializar problema:", err);
+      toast.error(err.message || "Ocorreu um erro ao processar seu card.");
+      // Garantir que não fique preso
       setDiscovering(false);
       setIsGeneratingFull(false);
     }
@@ -629,7 +656,6 @@ Responda APENAS com o JSON válido em Português (Brasil).`;
                      <button
                        key={p.id}
                        onClick={() => handleSelectProblem(p.id)}
-                       disabled={discovering && isSelected}
                        className={`text-left flex flex-col p-4 rounded-xl border transition-all ${
                          isSelected
                            ? "border-primary bg-primary/5 ring-1 ring-primary/30"

@@ -137,6 +137,7 @@ export type Database = {
           hashtags: string[] | null
           hook: string | null
           id: string
+          notas: string | null
           plataforma: string | null
           produto: string | null
           roteiro_narracao: string | null
@@ -157,6 +158,7 @@ export type Database = {
           hashtags?: string[] | null
           hook?: string | null
           id?: string
+          notas?: string | null
           plataforma?: string | null
           produto?: string | null
           roteiro_narracao?: string | null
@@ -177,6 +179,7 @@ export type Database = {
           hashtags?: string[] | null
           hook?: string | null
           id?: string
+          notas?: string | null
           plataforma?: string | null
           produto?: string | null
           roteiro_narracao?: string | null

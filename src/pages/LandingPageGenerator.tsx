@@ -45,7 +45,8 @@ const CATEGORY_STYLES: Record<string, { label: string; bg: string; text: string;
 
 export default function LandingPageGenerator() {
   const { user } = useAuth();
-  const { data: opportunities = [], isLoading: loadingOpps } = useOpportunities();
+  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [loadingOpps, setLoadingOpps] = useState(true);
   const [selectedOppId, setSelectedOppId] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [generatedHtml, setGeneratedHtml] = useState<string | null>(null);
@@ -57,6 +58,22 @@ export default function LandingPageGenerator() {
   useEffect(() => {
     if (user) loadHistory();
   }, [user]);
+
+  useEffect(() => {
+    async function loadOpps() {
+      setLoadingOpps(true);
+      const { data, error } = await supabase
+        .from("opportunities")
+        .select("*")
+        .order("created_at", { ascending: false });
+      
+      if (!error && data) {
+        setOpportunities(data);
+      }
+      setLoadingOpps(false);
+    }
+    loadOpps();
+  }, []);
 
   const loadHistory = async () => {
     try {
@@ -210,15 +227,7 @@ Return ONLY valid HTML. No markdown. No explanation. Just the complete HTML file
 
   const getCategoryStyle = (cat: string) => CATEGORY_STYLES[cat] || CATEGORY_STYLES.tech;
 
-  const radarOpportunities = (opportunities || []).filter((o: any) => !!o.detected_problem_id);
-  const patternOpportunities = (opportunities || []).filter((o: any) => !!o.source_pattern_id);
-  
-  const filteredOpps = (opportunities || []).filter((o: any) => {
-    if (radarOpportunities.length > 0 || patternOpportunities.length > 0) {
-      return !!o.detected_problem_id || !!o.source_pattern_id;
-    }
-    return true;
-  });
+  const filteredOpps = opportunities || [];
 
   return (
     <div className="space-y-12 max-w-7xl pb-20">
