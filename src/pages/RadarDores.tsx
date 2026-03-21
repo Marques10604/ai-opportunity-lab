@@ -18,6 +18,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useDetectedProblems } from "@/hooks/useSupabaseData";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 
 const PRE_MAPPED_PAINS = [
   {
@@ -233,11 +236,46 @@ const SCORE_BREAKDOWN: Record<number, { vol: number, vel: number, aus: number, u
 };
 
 export default function RadarDores() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("radar");
-  const [pains, setPains] = useState(PRE_MAPPED_PAINS);
+  
+  const { data: problems = [], isLoading: loadingProblems } = useDetectedProblems();
+  const [pains, setPains] = useState<any[]>(PRE_MAPPED_PAINS);
   const [savedPains, setSavedPains] = useState<any[]>([]);
   const [expandedCardId, setExpandedCardId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (problems.length > 0) {
+      setPains(problems);
+    }
+  }, [problems]);
+
+  // 🔥 Realtime Sync
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel("radar_dores_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "detected_problems",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
   
   // Save Modal State
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
@@ -333,31 +371,12 @@ export default function RadarDores() {
 
   const handleSearch = () => {
     setIsSearching(true);
+    // Simular busca ou acionar a função se necessário
     setTimeout(() => {
-      // Simulate API call and refresh feed. Just filter the PRE_MAPPED_PAINS locally
-      const filtered = PRE_MAPPED_PAINS.filter(pain => {
-        if (productFilter !== "Todos" && pain.product !== productFilter) return false;
-        if (typeFilter !== "Todos" && pain.type !== typeFilter) return false;
-        // Basic source matching
-        const hasSource = pain.sources.some(s => {
-          if (s.includes("GitHub") && sourceFilters.includes("GitHub Issues")) return true;
-          if (s.includes("Reddit") && sourceFilters.includes("Reddit")) return true;
-          if (s.includes("Twitter") && sourceFilters.includes("Twitter/X")) return true;
-          if (s.includes("Hacker News") && sourceFilters.includes("Hacker News")) return true;
-          if (s.includes("YouTube") && sourceFilters.includes("YouTube")) return true;
-          return false;
-        });
-        if (!hasSource && sourceFilters.length > 0) return false;
-        return true;
-      });
-      setPains(filtered);
+      queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
       setIsSearching(false);
-      if (filtered.length === 0) {
-        toast.info("Nenhuma dor encontrada para os filtros selecionados.");
-      } else {
-        toast.success(`Encontradas ${filtered.length} dores.`);
-      }
-    }, 2000);
+      toast.success("Radar atualizado!");
+    }, 1000);
   };
 
   const handleGenerateContent = async (pain: any) => {
@@ -879,7 +898,7 @@ ${a.thread.join('\n')}
                         <CardHeader className="p-5 pb-3">
                           <div className="flex justify-between items-start mb-3">
                             <div className="flex flex-wrap gap-2">
-                              <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full border ${BADGE_COLORS[pain.badge]}`}>
+                              <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full border ${BADGE_COLORS[pain.badge] || BADGE_COLORS["EMERGINDO"]}`}>
                                 {pain.badge === "ALTA DEMANDA" && <span className="mr-1">🔴</span>}
                                 {pain.badge === "JANELA ABERTA" && <span className="mr-1">⚡</span>}
                                 {pain.badge === "EMERGINDO" && <span className="mr-1">🟡</span>}
@@ -889,7 +908,7 @@ ${a.thread.join('\n')}
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-full font-bold cursor-help flex items-center">
-                                    Score {pain.score}
+                                    Score {pain.score || pain.viral_score || 0}
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent className="p-3 text-sm space-y-1 z-50 bg-card border border-border shadow-xl" side="top">
@@ -906,7 +925,7 @@ ${a.thread.join('\n')}
                             </span>
                           </div>
                           <CardTitle className="text-xl font-bold leading-tight group-hover:text-primary transition-colors cursor-pointer" onClick={() => toggleExpandCard(pain.id)}>
-                            {pain.title}
+                            {pain.problem_title || pain.title}
                           </CardTitle>
                           <div className="flex items-center gap-4 mt-3 text-[11px] text-muted-foreground">
                             <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" /> {pain.mentions} menções</span>
@@ -914,10 +933,10 @@ ${a.thread.join('\n')}
                           </div>
                         </CardHeader>
                         <CardContent className="p-5 pt-0 space-y-4">
-                          <p className="text-[11px] text-muted-foreground/80 font-medium">Fontes: {pain.sources.join(" · ")}</p>
+                          <p className="text-[11px] text-muted-foreground/80 font-medium">Fontes: {Array.isArray(pain.sources) ? pain.sources.join(" · ") : (pain.source_platform || "N/A")}</p>
                           
                           <div className="p-3 bg-secondary/30 rounded-xl border-l-2 border-primary/50 text-sm italic text-muted-foreground line-clamp-2">
-                            "{pain.quote}"
+                            "{pain.quote || pain.problem_description || "Sem descrição disponível."}"
                           </div>
 
                           <AnimatePresence>
@@ -943,7 +962,7 @@ ${a.thread.join('\n')}
                                   </h4>
                                   <div className="bg-secondary/20 p-4 rounded-xl border border-border/30">
                                     <ol className="list-decimal pl-5 space-y-2 text-sm text-muted-foreground">
-                                      {pain.workflow.map((step: string, i: number) => (
+                                      {(pain.workflow || []).map((step: string, i: number) => (
                                         <li key={i}>{step}</li>
                                       ))}
                                     </ol>
@@ -1063,7 +1082,7 @@ ${a.thread.join('\n')}
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold cursor-help inline-block">
-                                    Score {pain.score}
+                                    Score {pain.score || pain.viral_score || 0}
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent className="p-3 text-sm space-y-1 z-50 bg-card border border-border shadow-xl" side="top">

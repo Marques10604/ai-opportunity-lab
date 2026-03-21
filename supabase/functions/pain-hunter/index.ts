@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
+
     if (userError || !user) {
       console.error("Auth error:", userError);
       return new Response(JSON.stringify({ error: "Sessão inválida ou expirada", details: userError }), {
@@ -38,12 +38,15 @@ Deno.serve(async (req) => {
     }
 
     const userId = user.id;
-    
-    // Pegar parâmetros do corpo
+
     const body = await req.json().catch(() => ({}));
     const niche = body.niche || "software, produtividade, automação, tecnologia";
 
+    console.log("Nicho recebido:", niche);
     console.log(`Iniciando caça manual (REST) para o nicho: ${niche}`);
+
+    // 🚀 Gold Standard 2026: Varredura Profunda (Filtro de temporalidade removido para máxima densidade)
+    console.log(`Buscando problemas históricos e recentes para máxima cobertura em: ${niche}`);
 
     // ── FONTE REAL 1: Hacker News ──────────────────
     let hnPains: any[] = [];
@@ -77,20 +80,23 @@ Deno.serve(async (req) => {
     let redditPosts: any[] = [];
 
     if (REDDIT_CLIENT_ID === "pendente" || REDDIT_SECRET === "pendente") {
-      console.log("Detectado bypass do Reddit: Usando dados simulados.");
+      console.log("Simulando Varredura Profunda em r/ArtificialIntelligence, r/SaaS, r/LocalLLaMA");
       redditPosts = [
-        { title: "Frustrated with managing 15+ SaaS subscriptions across different teams." },
-        { title: "Our SME spends 20 hours a week manually copying CRM data." },
-        { title: "Scaling AI features is killing our margins." }
+        { title: "Scaling AI Agent Squads: The orchestration overhead is killing our latency." },
+        { title: "Inference costs for small fine-tuned models vs GPT-4o-mini is becoming a bottleneck for SMEs." },
+        { title: "Claude Code integration: How do you handle context drift when multiple agents edit the same file?" },
+        { title: "Reliability of multi-agent workflows in production is 0.7 at best. Need better QA agents." },
+        { title: "GPU availability for local inference in Brazil is a nightmare for scale." },
+        { title: "Integrating deep-seek and llama-3 across different edge runtimes." }
       ];
     }
 
     // ── FONTE REAL 3: Gemini (REST API) ─────────────────
     const rawKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
     if (!rawKey) {
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: "GEMINI_API_KEY não configurada.",
-        tip: "Execute: npx supabase secrets set GEMINI_API_KEY=sua_chave" 
+        tip: "Execute: npx supabase secrets set GEMINI_API_KEY=sua_chave"
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -98,24 +104,28 @@ Deno.serve(async (req) => {
     }
 
     const geminiKey = rawKey.trim();
-    const endpoint = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
 
-    const promptText = `Analise esses títulos reais do Hacker News e posts do Reddit e gere 10 problemas detalhados de usuários em português (Brasil). 
-Títulos Hacker News: ${hnPains.slice(0, 10).map((s: any) => s.title).join(" | ")}
-Posts Reddit: ${redditPosts.slice(0, 10).map((p: any) => p.title).join(" | ")}
+    const promptText = `Aja como um Caçador de Oportunidades de ELITE (Marques System Gold Standard).
+Analise esses títulos técnicos do Hacker News e subreddits (r/ArtificialIntelligence, r/SaaS, r/LocalLLaMA).
 
-Foque especialmente no nicho: ${niche}.
-Combine com outros problemas reais que você conhece de outras comunidades online sobre este nicho.
+Gere 15 problemas de ALTA DENSIDADE TÉCNICA em português (Brasil).
+FOCO OBRIGATÓRIO:
+1. Escala de Squads de IA (Orquestração, Latência, Conflitos).
+2. Custos de Inferência (Otimização de custos, Modelos locais, Margens de SaaS).
+3. Gargalos de Integração com Claude Code (Context drift, Autocompact, Fluxo de trabalho CLI).
+
+Seja agressivo: identifique dores que ninguém está resolvendo ainda.
 
 Retorne APENAS um objeto JSON no formato:
 {
   "problems": [
     {
-      "problem_title": "string",
-      "problem_description": "string",
-      "source_platform": "Reddit | Quora | YouTube | Twitter | Indie Hackers | Hacker News",
+      "problem_title": "string (Técnico e Impactante)",
+      "problem_description": "string (Detalhando o gargalo técnico e o impacto no ROI)",
+      "source_platform": "Reddit | Hacker News | LocalLLaMA | Indie Hackers",
       "frequency_score": integer (1-10),
-      "urgency_score": integer (1-10)
+      "urgency_score": integer (7-10) 
     }
   ]
 }`;
@@ -144,16 +154,16 @@ Retorne APENAS um objeto JSON no formato:
     if (!aiResponse.ok) {
       const errText = await aiResponse.text().catch(() => "Erro ilegível");
       console.error(`Gemini API error ${aiResponse.status}:`, errText);
-      
+
       let parsedError: any = {};
-      try { parsedError = JSON.parse(errText); } catch(e) {}
+      try { parsedError = JSON.parse(errText); } catch (e) { }
 
       const detailMsg = parsedError.error?.message || "Motivo oculto pelo Google";
 
-      return new Response(JSON.stringify({ 
-        error: `Erro Gemini 400 (${detailMsg})`, 
+      return new Response(JSON.stringify({
+        error: `Erro Gemini 400 (${detailMsg})`,
         status: aiResponse.status,
-        details: parsedError 
+        details: parsedError
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -171,6 +181,7 @@ Retorne APENAS um objeto JSON no formato:
     }
 
     const parsed = JSON.parse(cleanText);
+    console.log("🔍 [DEBUG] Problemas extraídos do Gemini:", JSON.stringify(parsed, null, 2));
     const generatedProblems: any[] = parsed.problems || [];
 
     if (generatedProblems.length === 0) {
@@ -192,6 +203,7 @@ Retorne APENAS um objeto JSON no formato:
         frequency_score: Math.min(100, freq),
         urgency_score: Math.min(100, urg),
         viral_score: Math.min(200, freq + urg),
+        pipeline_status: "pending",
       };
     });
 
@@ -202,9 +214,9 @@ Retorne APENAS um objeto JSON no formato:
 
     if (dbError) {
       console.error("Database error:", dbError);
-      return new Response(JSON.stringify({ 
-        error: "Erro ao salvar no banco (Tabela detected_problems não encontrada ou erro de RLS)", 
-        details: dbError 
+      return new Response(JSON.stringify({
+        error: "Erro ao salvar no banco (Tabela detected_problems não encontrada ou erro de RLS)",
+        details: dbError
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -215,15 +227,15 @@ Retorne APENAS um objeto JSON no formato:
       success: true,
       inserted: data?.length || 0,
       problems: data,
-    }), { 
-      status: 200, 
-      headers: { ...corsHeaders, "Content-Type": "application/json" } 
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" }
     });
 
   } catch (err: any) {
     console.error("Erro inesperado REST:", err);
-    return new Response(JSON.stringify({ 
-      error: "Erro inesperado ao usar a API REST do Gemini", 
+    return new Response(JSON.stringify({
+      error: "Erro inesperado ao usar a API REST do Gemini",
       message: err.message,
       details: err
     }), {

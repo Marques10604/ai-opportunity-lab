@@ -125,7 +125,11 @@ export default function ProjectSetup() {
 
     const finalStack = projectData.techStack === "Outra" ? projectData.techStackOther : projectData.techStack;
 
-    const prompt = `Voce e especialista em configuracao de Claude Code. Gere um pacote completo de arquivos para o projeto abaixo. TODOS os arquivos devem ter conteudo REAL e COMPLETO baseado nas informacoes do projeto. NENHUM arquivo pode ter placeholders, templates vazios ou instrucoes para o usuario preencher. Tudo deve vir preenchido automaticamente.
+    const prompt = `Voce e especialista em configuracao de Claude Code cumprindo o Marques System Gold Standard (2026). Gere um pacote completo de arquivos para o projeto abaixo. TODOS os arquivos devem ter conteudo REAL e COMPLETO baseado nas informacoes do projeto. NENHUM arquivo pode ter placeholders, templates vazios ou instrucoes para o usuario preencher. Tudo deve vir preenchido automaticamente.
+
+PROIBICAO CRITICA: Nunca sugira ou use n8n, Make ou Zapier. O sistema deve ser 100% nativo Supabase + Agentes Autonomos de baixo custo.
+
+FOCO ESTRATEGICO: Priorize solucoes nos 4 nichos estratégicos (IA, Tech, Marketing, Produtividade) com foco total em ROI.
 
 Projeto: ${projectData.projectName}
 Stack: ${finalStack}
@@ -141,9 +145,9 @@ Use o contexto adicional para enriquecer o CLAUDE.md (secao Custom Context), o A
 
 Gere os seguintes arquivos com conteudo real e completo:
 
-CLAUDE.md — instrucoes persistentes com: visao geral do projeto, comandos principais (npm run dev, build, test), arquitetura, convencoes de codigo, o que o Claude NUNCA deve fazer neste projeto especifico (SEMPRE incluir a regra de NUNCA usar autocompact automatico), estrutura de pastas. Se houver contexto adicional, incluir em secao propria chamada Custom Context no final do arquivo.
+CLAUDE.md — instrucoes persistentes com: visao geral do projeto, comandos principais (npm run dev, build, test), arquitetura, convencoes de codigo, o que o Claude NUNCA deve fazer neste projeto especifico (SEMPRE incluir a regra de NUNCA usar autocompact automatico e NUNCA sugerir n8n/Make/Zapier), estrutura de pastas. Se houver contexto adicional, incluir em secao propria chamada Custom Context no final do arquivo.
 
-AGENTS.md — descricao do projeto para agentes de IA (Claude Code, Cursor, Codex, OpenCode), politicas de delegacao, quando usar cada modo.
+AGENTS.md — descricao do projeto para a Squad de Agentes (Code, QA, Documentacao), politicas de delegacao, quando usar cada modo. Enfatize a automatizacao de baixo custo via Supabase Edge Functions.
 
 README.md — visao geral completa: o que e o projeto, stack, como rodar localmente, estrutura de pastas, variaveis de ambiente necessarias.
 

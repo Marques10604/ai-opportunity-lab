@@ -8,13 +8,9 @@ const corsHeaders = {
 };
 
 const PIPELINE_AGENTS = [
-  { id: "pain-hunter", name: "Pain Hunter", role: "Scans communities for user pain points" },
-  { id: "trend-detector", name: "Trend Detector", role: "Analyzes technology & market trends" },
-  { id: "tool-hunter", name: "Tool Hunter", role: "Maps existing tools and solutions" },
-  { id: "niche-detector", name: "Niche Detector", role: "Discovers underserved micro-niches" },
-  { id: "saas-generator", name: "SaaS Generator", role: "Combines signals into SaaS ideas" },
-  { id: "saturation-filter", name: "Saturation Filter", role: "Filters saturated markets" },
-  { id: "market-predictor", name: "Market Predictor", role: "Scores market potential" },
+  { id: "code-agent", name: "Agente de Código", role: "Implementa lógica e estruturas baseadas em oportunidades" },
+  { id: "qa-agent", name: "Agente de QA", role: "Valida código, segurança e performance" },
+  { id: "doc-agent", name: "Agente de Documentação", role: "Gera manuais e documentação técnica" },
 ];
 
 serve(async (req) => {
@@ -47,7 +43,7 @@ serve(async (req) => {
       userIds = [userId];
     } else {
       const { data: profiles } = await admin.from("profiles").select("user_id");
-      userIds = (profiles || []).map((p: any) => p.user_id);
+      userIds = (profiles || []).map((p: { user_id: string }) => p.user_id);
     }
     if (userIds.length === 0) {
       return new Response(JSON.stringify({ message: "No users" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -74,20 +70,23 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are an AI agent pipeline that discovers SaaS opportunities. You simulate running 7 agents in sequence. For each agent, provide a log of what it discovered. Then generate final opportunities.`,
+            content: `Você é uma Squad de Agentes IA do Marques System (Gold Standard 2026). Sua missão é transformar problemas reais em soluções SaaS de alto ROI. 
+Você opera em 3 etapas:
+1. Agente de Código: Desenha a arquitetura técnica e lógica da solução.
+2. Agente de QA: Valida a viabilidade, segurança e propõe melhorias de performance.
+3. Agente de Documentação: Cria o blueprint de implementação e guias de usuário.
+
+Foque nos nichos: IA, Tech, Marketing, Produtividade.
+Proíba terminantemente o uso de n8n, Make ou Zapier. Use apenas Supabase e Agentes Autônomos.`,
           },
           {
             role: "user",
-            content: `Run the full agent pipeline:
-1. Pain Hunter — find 3 real user pain points from online communities
-2. Trend Detector — identify 3 emerging tech/market trends
-3. Tool Hunter — map 3 existing tools/competitors
-4. Niche Detector — find 2 underserved niches
-5. SaaS Generator — combine findings into 3 SaaS opportunity ideas
-6. Saturation Filter — evaluate competition, keep only viable ones
-7. Market Predictor — score remaining opportunities
+            content: `Execute a Squad de Agentes para o cenário atual:
+1. Agente de Código — Desenvolva a estrutura baseada no Marques Stack (Lovable + Supabase).
+2. Agente de QA — Valide a segurança (OWASP 2026) e eficiência de custos.
+3. Agente de Documentação — Gere o guia técnico final.
 
-Return structured data for each agent step AND the final filtered opportunities.`,
+Retorne os resultados detalçados de cada agente E as oportunidades filtradas com nota de ROI.`,
           },
         ],
         tools: [
@@ -135,8 +134,9 @@ Return structured data for each agent step AND the final filtered opportunities.
                         market_score: { type: "number" },
                         competition_level: { type: "string", enum: ["Low", "Medium", "High"] },
                         difficulty_level: { type: "string", enum: ["Low", "Medium", "High"] },
+                        roi_efficiency_note: { type: "string" },
                       },
-                      required: ["title", "niche", "problem", "solution", "market_score", "competition_level", "difficulty_level"],
+                      required: ["title", "niche", "problem", "solution", "market_score", "competition_level", "difficulty_level", "roi_efficiency_note"],
                       additionalProperties: false,
                     },
                   },
@@ -183,7 +183,7 @@ Return structured data for each agent step AND the final filtered opportunities.
       // Insert opportunities
       if (opportunities.length > 0) {
         const { error } = await admin.from("opportunities").insert(
-          opportunities.map((o: any) => ({ ...o, user_id: uid }))
+          opportunities.map((o: Record<string, unknown>) => ({ ...o, user_id: uid }))
         );
         if (!error) {
           await log(uid, "SaaS Generator", "Pipeline complete", `Generated ${opportunities.length} new opportunities`, "success");

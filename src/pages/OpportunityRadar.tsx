@@ -18,8 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { useSelectedProblem } from "@/contexts/SelectedProblemContext";
 
 const NICHES = [
-  "Todos", "IA / AI-First", "Saúde", "E-commerce", "Finanças", "Jurídico", "Imobiliário",
-  "RH", "Educação", "Logística", "Tecnologia", "Marketing", "Produtividade",
+  "Todos", "IA", "Tech", "Marketing", "Produtividade",
 ];
 
 const IMPACT_COLORS: Record<string, string> = {
@@ -66,6 +65,49 @@ export default function OpportunityRadar() {
       return () => clearInterval(timer);
     }
   }, [cooldownTime]);
+
+  // 🔥 Premium 2026: Supabase Realtime (Instant Sync sem F5)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    console.log("📡 Ativando canal Realtime para detected_problems...");
+    const channel = supabase
+      .channel("radar_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "detected_problems",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log("⚡ Mudança detectada no Banco:", payload);
+          queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
+          
+          if (payload.eventType === 'UPDATE') {
+            const newItem = payload.new as any;
+            if (newItem.pipeline_status === 'completed') {
+              toast.success(`Pipeline concluído: ${newItem.problem_title}`, {
+                description: "Clique no card para ver as ferramentas e automações.",
+                icon: <CheckCircle2 className="h-4 w-4 text-green-500" />,
+                duration: 5000
+              });
+            } else if (newItem.pipeline_status === 'error') {
+               toast.error(`Falha no pipeline: ${newItem.problem_title}`, {
+                 description: newItem.pipeline_error || "Erro desconhecido na geração."
+               });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log("🔌 Desconectando canal Realtime...");
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
   const [discovering, setDiscovering] = useState(false);
   const [discoveryResult, setDiscoveryResult] = useState<any>(null);
   const [expandedCombo, setExpandedCombo] = useState<number | null>(null);
@@ -76,16 +118,28 @@ export default function OpportunityRadar() {
 
   const selectedProblemData = problems.find((p) => p.id === selectedProblem);
 
-  const getDaysRemaining = () => {
-    if (!problems || problems.length === 0) return null;
+  const isDataFresh = () => {
+    if (!problems || problems.length === 0) return false;
     
     const nicheProblems = selectedNiche === "Todos" 
       ? problems 
       : problems.filter(p => p.niche_category === selectedNiche);
       
-    if (nicheProblems.length === 0) return null;
+    if (nicheProblems.length === 0) return false;
     
     const latest = new Date(Math.max(...nicheProblems.map(p => new Date(p.created_at!).getTime())));
+    const now = new Date();
+    const diffHours = (now.getTime() - latest.getTime()) / (1000 * 60 * 60);
+    
+    return diffHours < 24;
+  };
+
+  const fresh = isDataFresh();
+
+  const getDaysRemaining = () => {
+    if (!problems || problems.length === 0) return 15;
+    
+    const latest = new Date(Math.max(...problems.map(p => new Date(p.created_at || '').getTime())));
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - latest.getTime()) / (1000 * 60 * 60 * 24));
     
@@ -97,8 +151,11 @@ export default function OpportunityRadar() {
   const handleHunt = async (force = false) => {
     if (!user) return;
 
-    if (!force && daysRemaining !== null && daysRemaining > 0) {
-      toast.info(`Usando lote atual. Faltam ${daysRemaining} dias para a próxima atualização automática.`);
+    if (!force && fresh) {
+      toast.info(`Inteligência Fresca Detectada!`, {
+        description: `Já coletamos dados recentes para ${selectedNiche} nas últimas 24h. Usando cache local para economizar tokens.`,
+        duration: 5000
+      });
       setHasSearched(true);
       return;
     }
@@ -114,25 +171,30 @@ export default function OpportunityRadar() {
     }, 1500);
 
     try {
-      toast.info("🚀 Motor de IA ativado! Gerando nova safra de dores no ambiente nativo (Supabase).");
+      const { data, error: invokeError } = await toast.promise(
+        supabase.functions.invoke('pain-hunter', {
+          body: { niche: selectedNiche === 'Todos' ? 'negocios online' : selectedNiche.toLowerCase() }
+        }),
+        {
+          loading: '🚀 Acionando motor de descoberta Gemini 2.5 Pro...',
+          success: (res) => {
+            if (res.data?.cached) return 'Dados recentes recuperados do cache!';
+            return `Sucesso! Encontramos ${res.data?.problems?.length || 0} novas oportunidades.`;
+          },
+          error: 'Falha ao conectar com o motor de IA.'
+        }
+      );
+
+      if (invokeError) throw invokeError;
       
-      const { data: huntData, error: huntError } = await supabase.functions.invoke('pain-hunter', {
-        body: { niche: selectedNiche === 'Todos' ? 'Negócios Online' : selectedNiche }
-      });
-
-      if (huntError || huntData?.error) {
-        throw new Error(huntError?.message || huntData?.error || "Erro na Edge Function pain-hunter");
+      if (data?.success) {
+         queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
+         // Aciona o processamento do pipeline de forma assíncrona
+         supabase.functions.invoke('process-pipeline-queue').catch(e => console.error("Erro invoke queue:", e));
       }
-
-      queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
-      toast.success("🚀 Motor de IA ativado! Gerando soluções em background. Isso pode levar alguns minutos...");
-
-      // Aciona o processamento do pipeline de forma assíncrona
-      supabase.functions.invoke('process-pipeline-queue').catch(e => console.error("Erro invoke queue:", e));
 
     } catch (err: any) {
       console.error("Erro completo:", err);
-      toast.error(err.message || "Erro ao caçar problemas");
     } finally {
       clearInterval(interval);
       setScanStep(5);
@@ -335,6 +397,13 @@ export default function OpportunityRadar() {
                 <><Search className="h-4 w-4" /> Buscar Novos Problemas</>
               )}
             </Button>
+
+            {fresh && !hunting && (
+              <Badge variant="outline" className="gap-1.5 py-1.5 bg-green-500/10 border-green-500/20 text-green-500 animate-in fade-in slide-in-from-left-2 transition-all">
+                <Zap className="h-3 w-3" />
+                Inteligência Fresca
+              </Badge>
+            )}
 
             {daysRemaining !== null && daysRemaining > 0 && !hunting && (
               <div className="flex items-center gap-2">

@@ -24,31 +24,27 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "" // Usa Service Role para contornar RLS das transações em background
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // 2. Extrai User JWT da requisição para injetar nos registros, para que o usuário sinta que os registros são dele
+    // 2. Extrai User JWT
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       throw new Error("Missing Authorization header");
     }
     
-    // Configura o client Supabase logado temporariamente para pegar o user.id
     const userClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       { global: { headers: { Authorization: authHeader } } }
     );
     
-    // Obter o ID do usuário (Precisamos disto para as Foreign Keys)
     let userId = "";
     try {
-      // Caso a chamada tenha vindo do client via Auth, extraímos o usuário real.
       const { data: { user }, error: userError } = await userClient.auth.getUser();
       if (userError || !user) throw new Error("Não autorizado");
       userId = user.id;
     } catch (e) {
-      // Suporte para o Self-Invoke: Quando a função chama a si mesma, passamos o userId no body
       const bodyText = await req.clone().text();
       if (bodyText) {
         const bodyObj = JSON.parse(bodyText);
@@ -59,246 +55,195 @@ serve(async (req) => {
       }
     }
 
-    // 3. Pegar próximos 2 problemas pendentes (LIMIT 2)
+    // 3. Pegar próximos 5 problemas pendentes (LIMIT 5)
     const { data: pendingProblems, error: fetchError } = await supabaseClient
       .from("detected_problems")
       .select("*")
       .eq("pipeline_status", "pending")
       .eq("user_id", userId)
-      .limit(2);
+      .limit(5);
 
-    if (fetchError) {
-      throw fetchError;
-    }
+    if (fetchError) throw fetchError;
 
     if (!pendingProblems || pendingProblems.length === 0) {
-      // Fila zerada.
       return new Response(JSON.stringify({ status: "done", message: "Fila de problemas vazia." }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
-    console.log(`Fila ativada: Processando ${pendingProblems.length} problemas agora para o usuário ${userId}...`);
+    console.log(`Fila ativada: Processando lote de ${pendingProblems.length} problemas...`);
 
-    // 4. Mudar status para 'processing' para evitar que outro job pegue os mesmos
+    // 4. Mudar status para 'processing'
     const processingIds = pendingProblems.map((p) => p.id);
     await supabaseClient
       .from("detected_problems")
       .update({ pipeline_status: "processing" })
       .in("id", processingIds);
 
-    // 5. Processar cada problema usando Gemini
-    for (let i = 0; i < pendingProblems.length; i++) {
-      const problemData = pendingProblems[i];
-      console.log(`[Problema ${i + 1}/${pendingProblems.length}] Gerando IA para: ${problemData.problem_title}`);
+    // 5. Batch Process with Gemini 2.5
+    const prompt = `Você é um estrategista de conteúdo e negócios AI-First.
+Analise os problemas abaixo e, para cada um, gere um pipeline completo de solução e conteúdo.
 
-      try {
-        const prompt = `Você é um estrategista de conteúdo e negócios AI-First.
-Analise o problema: "${problemData.problem_title}" (${problemData.problem_description || "N/A"}) no nicho "${problemData.niche_category || "Geral"}".
+PROBLEMAS PARA ANALISAR:
+${pendingProblems.map((p, idx) => `ID_INDEX: ${idx}
+TÍTULO: ${p.problem_title}
+DESCRIÇÃO: ${p.problem_description || "N/A"}
+---`).join("\n")}
 
-Gere um pipeline completo em um único JSON com a seguinte estrutura:
-
+Retorne UM ÚNICO objeto JSON no seguinte formato:
 {
-  "discovered_tools": [
-    {"tool_name": "...", "category": "AI Tools|Automation Frameworks|Developer Tools", "description": "...", "website": "..."}
-  ],
-  "combinations": [
+  "batch_results": [
     {
-      "solution_name": "...",
-      "tools_used": ["nome_da_ferramenta"],
-      "solution_description": "...",
-      "expected_result": "...",
-      "innovation_score": 9,
-      "content_idea": "...",
-      "video_script": {"hook": "...", "problem": "...", "tools_demo": "...", "solution": "...", "result": "..."},
-      "business_idea": {"nome": "...", "descricao_produto": "...", "infraestrutura": "...", "stack_ferramentas": [], "monetizacao": "...", "diferencial_ai": "...", "potencial_escala": "..."}
+      "index": 0,
+      "discovered_tools": [
+        { "tool_name": "...", "category": "...", "description": "...", "website": "..." }
+      ],
+      "combinations": [
+        { 
+          "solution_name": "...", 
+          "solution_description": "...", 
+          "tools_used": ["nome1", "nome2"], 
+          "expected_result": "...",
+          "innovation_score": 9,
+          "content_idea": "...",
+          "video_script": {
+            "hook": "...", "problem": "...", "tools_demo": "...", "solution": "...", "result": "..."
+          }
+        }
+      ],
+      "content_ideas": [
+        { "title": "...", "angle": "...", "instagram": "...", "tiktok": "...", "linkedin": "...", "twitter": "...", "youtube": "..." }
+      ]
     }
-  ],
-  "content_ideas": [
-    {
-      "angle": "tutorial|polemica|hack|comparativo|transformacao",
-      "title": "...",
-      "instagram": "roteiro completo 30s com hook nos primeiros 3s",
-      "tiktok": "roteiro completo storytelling",
-      "linkedin": "post completo 200-300 palavras",
-      "twitter": ["tweet1", "tweet2", "tweet3", "tweet4", "tweet5"],
-      "youtube": "roteiro tutorial 60s"
-    }
-  ],
-  "video_script": {
-    "hook": "primeiros 3 segundos",
-    "problem": "desenvolvimento do problema",
-    "solution": "demonstracao da solucao",
-    "cta": "call to action final"
-  },
-  "platform_content": {
-    "instagram": {"format": "Reels", "duration": "30s", "style": "Cinematic"},
-    "tiktok": {"format": "Trends", "duration": "15s", "style": "Lofi"},
-    "linkedin": {"format": "Article", "duration": "3min", "style": "Professional"},
-    "twitter": {"format": "Thread", "duration": "1min", "style": "Direct"},
-    "youtube": {"format": "Shorts", "duration": "60s", "style": "Educational"}
-  }
-}}
-
-Gere pelo menos 5 discovered_tools relevantes ao problema.
-Gere 5 content_ideas (um para cada 'angle').
-Gere 2-3 combinations.
+  ]
+}
 Responda APENAS com o JSON válido em Português (Brasil).`;
 
-        const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              systemInstruction: {
-                parts: [{ text: COPYWRITER_SYSTEM_PROMPT }]
-              },
-              generationConfig: {
-                responseMimeType: "application/json"
-              }
-            })
-          }
-        );
+    const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          systemInstruction: { parts: [{ text: COPYWRITER_SYSTEM_PROMPT }] },
+          generationConfig: { responseMimeType: "application/json" }
+        })
+      }
+    );
 
-        if (!geminiRes.ok) {
-          const errData = await geminiRes.json();
-          throw new Error(errData.error?.message || "Erro na API do Gemini.");
-        }
+    if (!geminiRes.ok) {
+      const errData = await geminiRes.json();
+      throw new Error(errData.error?.message || "Erro na API do Gemini.");
+    }
 
-        const resData = await geminiRes.json();
-        const aiText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!aiText) throw new Error("A IA retornou uma resposta vazia.");
+    const resData = await geminiRes.json();
+    const aiText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+    console.log("DEBUG: Resposta bruta do Gemini:", aiText.substring(0, 200) + "...");
+    
+    let batchResult;
+    try {
+      batchResult = JSON.parse(aiText.replace(/```json|```/g, "").trim());
+    } catch (e) {
+      console.error("ERRO: Falha ao parsear JSON do Gemini:", e.message);
+      throw e;
+    }
 
-        const cleanedText = aiText.replace(/```json|```/g, "").trim();
-        const result = JSON.parse(cleanedText);
+    if (!batchResult.batch_results || batchResult.batch_results.length === 0) {
+      console.warn("AVISO: Gemini retornou batch_results vazio.");
+    }
 
-        // 6. Inserir resultados no banco de dados, vinculando com o source_problem_id
-        // 6.1: Discovered Tools
-        const ferramentasArray = result.discovered_tools || result.tools || result.ferramentas || [];
-        if (ferramentasArray && ferramentasArray.length > 0) {
-          const { error: tErr } = await supabaseClient.from("tools").insert(
-            ferramentasArray.map((t: any) => ({
+    // 6. Inserir resultados
+    for (const result of batchResult.batch_results) {
+      const problemData = pendingProblems[result.index];
+      if (!problemData) {
+        console.warn(`AVISO: Índice ${result.index} não encontrado no lote pendente.`);
+        continue;
+      }
+
+      console.log(`Processando Resultado para Problema ID: ${problemData.id} (${problemData.problem_title})`);
+
+      try {
+        // Tools
+        const tools = result.discovered_tools || [];
+        console.log(`Encontradas ${tools.length} ferramentas para este problema.`);
+        
+        if (tools.length > 0) {
+          const { error: toolsErr } = await supabaseClient.from("tools").insert(tools.map((t: any) => {
+            console.log(`  -> Inserindo ferramenta: ${t.tool_name}`);
+            return {
               user_id: userId,
               source_problem_id: problemData.id,
-              tool_name: t.tool_name || t.name || t.nome || "Não identificada",
-              category: t.category || t.categoria || "Geral",
-              description: t.description || t.descricao || "Sem descrição",
-              website: t.website || t.site || t.url || ""
-            }))
-          );
-          if (tErr) throw new Error("Erro insert tools: " + tErr.message);
+              tool_name: t.tool_name,
+              category: t.category,
+              description: t.description,
+              website: t.website
+            };
+          }));
+          if (toolsErr) console.error("Erro ao inserir ferramentas:", toolsErr);
         }
 
-        // 6.2: Tool Combinations
+        // Combinations
         if (result.combinations) {
-          const { error: cErr } = await supabaseClient.from("tool_combinations").insert(
-            result.combinations.map((c: any) => ({
-              user_id: userId,
-              source_problem_id: problemData.id,
-              solution_name: c.solution_name,
-              solution_description: c.solution_description,
-              tools_used: c.tools_used,
-              expected_result: c.expected_result,
-              innovation_score: c.innovation_score,
-              content_idea: c.content_idea,
-              video_script: c.video_script,
-              business_idea: c.business_idea
-            }))
-          );
-          if (cErr) throw new Error("Erro insert tool_combinations: " + cErr.message);
+          console.log(`Inserindo ${result.combinations.length} combinações.`);
+          const { error: comboErr } = await supabaseClient.from("tool_combinations").insert(result.combinations.map((c: any) => ({
+            user_id: userId,
+            source_problem_id: problemData.id,
+            ...c
+          })));
+          if (comboErr) console.error("Erro ao inserir combinações:", comboErr);
         }
 
-        // 6.3: Calendario Conteudo
+        // Calendar
         if (result.content_ideas) {
-          const calendarRows: any[] = [];
-          const platforms = ["instagram", "tiktok", "linkedin", "twitter", "youtube"];
-          
+          console.log(`Gerando calendário com ${result.content_ideas.length} ideias.`);
+          const rows: any[] = [];
           result.content_ideas.forEach((idea: any) => {
-            platforms.forEach(platform => {
-              const platformKey = platform === "twitter" ? "x" : platform;
-              const pContent = result.platform_content?.[platform] || {};
-              calendarRows.push({
+            ["instagram", "tiktok", "linkedin", "twitter", "youtube"].forEach(p => {
+              const pKey = p === "twitter" ? "x" : p;
+              rows.push({
                 user_id: userId,
                 source_problem_id: problemData.id,
                 dor_titulo: idea.title,
                 angulo: idea.angle,
-                plataforma: platformKey,
-                roteiro_narracao: typeof idea[platform] === "string" ? idea[platform] : JSON.stringify(idea[platform]),
-                roteiro_tela: pContent.style || "",
-                duracao_estimada: pContent.duration || "",
-                hook: platform === "instagram" && typeof idea.instagram === "string" ? idea.instagram.substring(0, 100) : idea.title,
+                plataforma: pKey,
+                roteiro_narracao: idea[p],
                 status: "pendente"
               });
             });
           });
-          const { error: calErr } = await supabaseClient.from("calendario_conteudo").insert(calendarRows);
-          if (calErr) throw new Error("Erro insert calendario: " + calErr.message);
+          const { error: calErr } = await supabaseClient.from("calendario_conteudo").insert(rows);
+          if (calErr) console.error("Erro ao inserir calendário:", calErr);
         }
 
-        // 6.4: Content Opportunities
-        const { error: oErr } = await supabaseClient.from("content_opportunities").insert({
+        // Opps
+        console.log("Atualizando oportunidades de conteúdo...");
+        await supabaseClient.from("content_opportunities").insert({
           user_id: userId,
           source_problem_id: problemData.id,
           titulo_conteudo: problemData.problem_title,
-          tipo_conteudo: "Pipeline Completo",
-          gancho: result.video_script?.hook,
-          roteiro_curto: result.video_script?.solution
+          tipo_conteudo: "Pipeline Completo"
         });
-        if (oErr) throw new Error("Erro insert content_opportunities: " + oErr.message);
 
-        // 6.5: Opportunities
-        if (result.combinations && result.combinations.length > 0) {
-          const firstCombo = result.combinations[0];
-          const mScore = problemData.viral_score || 50;
-          let compLevel = "Média";
-          if (mScore > 80) compLevel = "Baixa";
-          else if (mScore < 60) compLevel = "Alta";
-
-          const { error: oppLabErr } = await supabaseClient.from("opportunities").insert({
-            user_id: userId,
-            detected_problem_id: problemData.id,
-            title: firstCombo.solution_name,
-            problem: problemData.problem_title,
-            solution: firstCombo.solution_description,
-            niche: problemData.niche_category || "Geral",
-            market_score: mScore,
-            competition_level: compLevel,
-            difficulty_level: "Média"
-          });
-          if (oppLabErr) throw new Error("Erro insert opportunities lab: " + oppLabErr.message);
-        }
-
-        // 7. Marcar como Concluído
+        // Finalize
+        console.log(`Finalizando status para item ${problemData.id} -> completed`);
         await supabaseClient
           .from("detected_problems")
-          .update({ pipeline_status: "completed", pipeline_error: null })
+          .update({ pipeline_status: "completed" })
           .eq("id", problemData.id);
 
-        console.log(`[SUCESSO] Pipeline gerado para: ${problemData.problem_title}`);
-
-      } catch (err: any) {
-        // Intercepta e marca como erro
-        console.error(`[ERRO] Falha no pipeline: ${problemData.problem_title} - ${err.message}`);
+      } catch (e: any) {
+        console.error(`Erro item ${problemData.id}:`, e.message);
         await supabaseClient
           .from("detected_problems")
-          .update({ pipeline_status: "error", pipeline_error: err.message })
+          .update({ pipeline_status: "error", pipeline_error: e.message })
           .eq("id", problemData.id);
-      }
-
-      // DELAY DE SEGURANÇA RATE LIMIT (GEMINI FREE: 15 RPM)
-      // Se não for o último problema, espera 5.5s para bater com limite seguro de requests.
-      if (i < pendingProblems.length - 1) {
-         console.log("Aplicando delay de 5.5 segundos para evitar Rate Limiting...");
-         await new Promise(r => setTimeout(r, 5500));
       }
     }
 
-    // 8. O Loop da Lote 1 Acabou. Verificamos se há MAIS pendentes na fila.
-    // Self-Invoking Mechanic
+    // 8. Self-Invoke if needed
     const { count } = await supabaseClient
       .from("detected_problems")
       .select("*", { count: 'exact', head: true })
@@ -306,31 +251,23 @@ Responda APENAS com o JSON válido em Português (Brasil).`;
       .eq("user_id", userId);
 
     if (count && count > 0) {
-      console.log(`Há mais ${count} itens pendentes. Disparando self-invoke callback assíncrono para liberar conexão atual.`);
-      
-      // A Edge function chama a si mesma assincronamente e não aguarda resposta.
       fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/process-pipeline-queue`, {
          method: "POST",
          headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` // auth com JWT
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
          },
          body: JSON.stringify({ userId: userId })
-      }).catch(e => console.error("Erro no fetch de Self-Invoke:", e));
+      }).catch(e => console.error("Self-Invoke Error:", e));
     }
 
-    // A requisição atual retorna 200 rápido (morre) evitando Timeout Exceeded da Runtime.
-    return new Response(JSON.stringify({
-      status: "success",
-      message: `Processado lote de ${pendingProblems.length} oportunidades.`,
-      queue_remaining: count || 0
-    }), {
+    return new Response(JSON.stringify({ status: "success", count: pendingProblems.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
 
   } catch (error: any) {
-    console.error("Erro Fatal no Queue Processor:", error.message);
+    console.error("Fatal Queue Error:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,
