@@ -1,101 +1,101 @@
-# 🏆 AUDITORIA GOLD STANDARD - Marques System 2026
+# 🏆 AUDITORIA GOLD STANDARD - Marques System 2026 (Modernização Real-Stack)
 
-Este documento detalha o estado técnico atual do projeto, identificando lacunas arquiteturais, dívidas técnicas e inconsistências em relação ao "Padrão Ouro" definido para a refatoração via Claude Code.
-
----
-
-## 1. 🏗️ Arquitetura e Fluxo de Dados (Frontend -> Backend)
-
-### 🚨 Falhas Críticas de Segurança e Fluxo
-- **Chamadas Diretas da API (Client-Side):** Identificamos que as páginas `OpportunityDetail.tsx` e `RadarDores.tsx` realizam chamadas diretas para as APIs da Google (Gemini) e Anthropic (Claude) usando chaves expostas no ambiente (`VITE_GEMINI_API_KEY`, `VITE_ANTHROPIC_API_KEY`).
-  - **Ação:** Refatorar para usar `supabase.functions.invoke()` em todas as operações de IA, centralizando a lógica e as chaves no backend (Edge Functions).
-
-### ⚡ Performance e Concorrência
-- **Await Faltante:** Em `OpportunityRadar.tsx`, a chamada para `process-pipeline-queue` não é aguardada (`await`).
-- **Feedback Visual "Fantasma":** O progresso do scan é controlado por timers e não por estados reais.
+Este documento consolidado define as diretrizes de engenharia para a refatoração via **Claude Code**, alinhando o projeto à stack **Supabase + Lovable + Vercel + Antigravity**.
 
 ---
 
-## 2. 🤖 Consistência do Modelo IA (Gold Standard: Gemini 2.5 Flash)
+## 🛡️ 1. Blindagem de Infraestrutura e Governança
 
-### 📊 Status de Migração
-- **Edge Functions:** ✅ 100% migradas para `gemini-2.5-flash`.
-- **Frontend Labels:** ❌ Inconsistente (referências ao 1.5 Pro).
-- **Divergência Crítica:** `RadarDores.tsx` utilizando Anthropic indevidamente.
+### 🚨 Segurança de Segredos (Zero Exposure)
+- **Eliminação de VITE_:** É terminantemente proibido o uso de variáveis `VITE_` para chaves de API sensíveis no frontend.
+- **Supabase Vault & Secrets:**
+  - Chaves estáticas (Gemini, GitHub App) devem ser configuradas via `supabase secrets set`.
+  - Tokens dinâmicos (GitHub OAuth `provider_token`) devem ser armazenados no **Supabase Vault** com criptografia baseada em `libsodium`.
+  - **Acesso:** Somente via Edge Functions (Deno) ou funções SQL com `SECURITY DEFINER` e `search_path` fixo.
 
----
-
-## 3. 🧹 Dívida Técnica e Legados (Niches & Tools)
-
-### 🚫 Ferramentas Proibidas (n8n, Make, Zapier)
-- **Ação:** Remover menções de ferramentas de automação legadas dos prompts em favor de agentes puros.
-
----
-
-## 🔗 CAMADAS DE ELITE (ROTEIRO DE UPGRADE)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CAMADA 2: CLAUDE SKILLS / MCPS (DX ELITE)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Funcionalidade exclusiva de **Developer Experience (DX)** no módulo **'Ecossistema Anthropic' -> Aba 'Configuração de Projeto'**.
-- **ZIP de Elite:** Exporta `mcp-servers.json` e a pasta `.claude/rules/`.
-- **Prompt Dinâmico:** Botão 'Copiar Primeiro Comando' com aviso de segurança para Skills ativas.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CAMADA 3-8: ESTRATÉGIA, ROI E CONTEXTO
-━━━━━━━━━━━━━━━━━━━━━━━
-Loop automático, análise de rivais, janela de oportunidade, Multi-plataforma, Motores de Validação (ROI/PAS) e Direção de Cena/Copy de 5 Ângulos.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CAMADA 9: GITHUB ENGINE & CONTEXT AUTOMATION
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Esta é a última peça do quebra-cabeça: **A ponte para o código.**
-
-1. **GitHub OAuth Flow (Scope: repo):**
-   - Integração do Supabase Auth com provedor GitHub para capturar o `provider_token`.
-   - Permissão de escrita para criar projetos e realizar commits em nome do usuário.
-
-2. **Auto-Repo Architect (Edge Function):**
-   Lógica automatizada para:
-   - Criar repositório público/privado via API.
-   - **Initial Commit Elite:** Subir a estrutura completa de contexto que economiza tokens e guia o Claude:
-     - `/CLAUDE.md`: O "Dono da Casa" (Regras principais).
-     - `/.claude/rules/`: Pasta de regras específicas (.md).
-     - `/.tasks/`: Histórico de progresso.
-     - `/ARCHITECTURE.md`: O mapa da mina.
-
-3. **Prompt de Boot Dinâmico:**
-   O 'Primeiro Comando' na aba de Configuração deve incluir a URL do novo repo e a instrução de **'Sequência de Leitura' (Boot Sequence)**: "Leia CLAUDE.md e ARCHITECTURE.md antes de qualquer ação".
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FIM DAS CAMADAS DE ELITE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### 🏛️ Governança Antigravity
+- **O Guardião:** O **Antigravity** atua como o Guardião da Arquitetura. 
+- **Regra de Push:** Toda refatoração estrutural proposta pelo Claude Code deve ser validada contra as regras do Antigravity definidas em `.agent/` antes do deploy final na Vercel.
 
 ---
 
-## 💎 ESPECIFICAÇÕES TÉCNICAS PARA O CLAUDE
+## 🤖 2. Hierarquia de Inteligência e Custo (84% OFF)
 
-#### 1. 🗄️ SQL Schema (Migrations & Vault)
+O sistema deve operar em um modelo híbrido para maximizar a eficiência:
+
+- **Motor de Execução (Gemini 2.5 Flash):** 
+  - **Uso:** Radar de Oportunidades, Geração de Conteúdo, Landing Pages, Scan de Tendências.
+  - **Por que:** 84% mais barato que Claude 3.5 Sonnet, 1M de janela de contexto e 200 tokens/s.
+- **Ambiente de Desenvolvimento (Claude 3.5 Sonnet):**
+  - **Uso:** Apenas para **Claude Code CLI (DX)** e tarefas de alta lógica/raciocínio complexo.
+
+---
+
+## ⚡ 3. Protocolo AG-UI (Realtime Workflow)
+
+### 🚫 Adeus Timers Fantasmas
+- O progresso em `OpportunityRadar.tsx` e `Dashboard.tsx` não deve ser simulado por `setInterval`.
+- **Streaming de Eventos:** Implementar o protocolo **AG-UI** via **Supabase Realtime**.
+- **Contrato de Eventos:**
+  - `RUN_STARTED`: Início da tarefa global.
+  - `STEP_STARTED`: Detalhamento da sub-tarefa (ex: "Pesquisando nicho Tech").
+  - `STATE_DELTA`: Atualização incremental dos dados no dashboard.
+  - `TEXT_DELTA`: Streaming de texto (tokens) para roteiros e copy.
+
+---
+
+## 🔗 4. Agentes Puros (Adeus Low-Code)
+
+### 💀 Limpeza de Legado
+- **Remoção Total:** Deletar qualquer menção ou integração com `n8n`, `Make.com` ou `Zapier`.
+- **Estratégia Agêntica:** O sistema é 100% agêntico, rodando em Edge Functions integradas nativamente ao Lovable.
+- **Orquestração Nativa:** Usar `pg_cron` e `pg_net` para disparar tarefas agendadas e processar filas diretamente no banco de dados.
+
+---
+
+## ⚙️ 5. Idempotência e Resiliência
+
+### 💰 Proteção de Cobrança
+- **EXECUTION_ID:** Todas as Edge Functions devem validar o `EXECUTION_ID` nos metadados para evitar execuções duplicadas em caso de oscilação de rede ou retentativas automáticas.
+- **Checkpoints:** Salvar o progresso parcial no PostgreSQL para permitir que funções retomem de onde pararam em caso de timeout.
+
+---
+
+## 📂 6. Estrutura de Contexto (DX Elite)
+
+Para que o Claude Code opere com máxima precisão e economia de tokens:
+
+- **CLAUDE.md:** Limite de 200 linhas. Foco em padrões de código e build.
+- **.claude/rules/:** Modularizar regras por domínio (ex: `ui-rules.md`, `api-rules.md`).
+- **Boot Sequence:** O comando de início deve ser: `git clone [REPO] && claude` -> Seguido da leitura obrigatória de `CLAUDE.md` e `ARCHITECTURE.md`.
+
+---
+
+## 💎 ESPECIFICAÇÕES TÉCNICAS FINAIS
+
+#### 🗄️ SQL Schema (2026 Modernizado)
 ```sql
--- Tokens Criptografados (Vault / Profiles)
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS encrypted_github_token text;
-ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS github_username text;
+-- Vault Access Helper
+CREATE OR REPLACE FUNCTION public.get_decrypted_secret(secret_name text)
+RETURNS text LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $$
+DECLARE decrypted_val text;
+BEGIN
+    SELECT decrypted_secret INTO decrypted_val FROM vault.decrypted_secrets WHERE name = secret_name;
+    RETURN decrypted_val;
+END; $$;
 
--- Cache de Direções (Layer 8)
-ALTER TABLE public.content_opportunities ADD COLUMN IF NOT EXISTS directions_metadata jsonb DEFAULT '{}'::jsonb;
-ALTER TABLE public.content_opportunities ADD COLUMN IF NOT EXISTS angle_type text;
+-- Activity Logs for AG-UI Realtime
+ALTER TABLE public.agent_activity ADD COLUMN IF NOT EXISTS execution_id uuid;
+ALTER TABLE public.agent_activity ADD COLUMN IF NOT EXISTS event_type text; -- RUN_STARTED, STEP_STARTED, etc.
+ALTER PUBLICATION supabase_realtime ADD TABLE public.agent_activity;
 ```
 
-#### 2. 🧠 Prompt Master (GitHub Boot Sequence)
+#### 🧠 Prompt Master (Antigravity Guard)
 ```json
 {
-  "system": "Aja como Arquiteto DevOps e Instrutor de Claude Code.",
-  "boot_instruction": "Sequência de Leitura Obrigatória: 1. CLAUDE.md, 2. ARCHITECTURE.md, 3. .claude/rules/",
-  "repo_integration": "Repo URL: {generated_repo_url}",
-  "token_optimization": "Use arquivos Markdown da pasta .claude/rules/ para economizar tokens de contexto."
+  "system": "Aja como Antigravity Architecture Guard.",
+  "mandate": "Validar refatoração estrutural com regras em .agent/ antes de propor alterações.",
+  "stack": "Supabase, Lovable, Vercel, Gemini 2.5 Flash (Worker), Claude 3.5 (Arquitetura).",
+  "idempotency": "Garantir captura de EXECUTION_ID em todas as novas funções."
 }
 ```
-
-#### 3. 🧹 Cleanup List
-- `src/pages/RadarDores.tsx` 🛑 (Deletar monólito)
-- `src/components/DiscoveryEngine.tsx` 🛑 (Deletar legado)
