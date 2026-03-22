@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const niche = body.niche || "software, produtividade, automação, tecnologia";
-
+    console.log("Iniciando busca com chave renovada");
     console.log("Nicho recebido:", niche);
     console.log(`Iniciando caça manual (REST) para o nicho: ${niche}`);
 
@@ -82,12 +82,9 @@ Deno.serve(async (req) => {
     if (REDDIT_CLIENT_ID === "pendente" || REDDIT_SECRET === "pendente") {
       console.log("Simulando Varredura Profunda em r/ArtificialIntelligence, r/SaaS, r/LocalLLaMA");
       redditPosts = [
-        { title: "Scaling AI Agent Squads: The orchestration overhead is killing our latency." },
-        { title: "Inference costs for small fine-tuned models vs GPT-4o-mini is becoming a bottleneck for SMEs." },
-        { title: "Claude Code integration: How do you handle context drift when multiple agents edit the same file?" },
-        { title: "Reliability of multi-agent workflows in production is 0.7 at best. Need better QA agents." },
-        { title: "GPU availability for local inference in Brazil is a nightmare for scale." },
-        { title: "Integrating deep-seek and llama-3 across different edge runtimes." }
+        { title: `Problemas reais de ${niche} no Reddit (2026)` },
+        { title: `Dores latentes em ${niche} discutidas no Indie Hackers` },
+        { title: `Gargalos de custo e latência em ${niche}` }
       ];
     }
 
@@ -104,12 +101,18 @@ Deno.serve(async (req) => {
     }
 
     const geminiKey = rawKey.trim();
+    // 🚀 [Marques System Gold Standard] Using Gemini 2.5 Flash for elite performance
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
 
-    const promptText = `Aja como um Caçador de Oportunidades de ELITE (Marques System Gold Standard).
-Analise esses títulos técnicos do Hacker News e subreddits (r/ArtificialIntelligence, r/SaaS, r/LocalLLaMA).
+    const contextTitles = [...hnPains, ...redditPosts].map(p => p.title).join("\n- ");
 
-Gere 15 problemas de ALTA DENSIDADE TÉCNICA em português (Brasil).
+    const promptText = `Aja como um Caçador de Oportunidades de ELITE (Marques System Gold Standard).
+Analise estes títulos reais coletados de comunidades técnicas:
+- ${contextTitles}
+
+Nicho solicitado pelo usuário: ${niche}
+
+Gere 15 problemas de ALTA DENSIDADE TÉCNICA em português (Brasil) baseados nesses dados e no seu conhecimento avançado de 2026.
 FOCO OBRIGATÓRIO:
 1. Escala de Squads de IA (Orquestração, Latência, Conflitos).
 2. Custos de Inferência (Otimização de custos, Modelos locais, Margens de SaaS).
@@ -171,6 +174,7 @@ Retorne APENAS um objeto JSON no formato:
     }
 
     const aiData = await aiResponse.json();
+    console.log("🔍 [DEBUG] Resposta bruta do Gemini:", JSON.stringify(aiData));
     const cleanText = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!cleanText) {
@@ -181,7 +185,7 @@ Retorne APENAS um objeto JSON no formato:
     }
 
     const parsed = JSON.parse(cleanText);
-    console.log("🔍 [DEBUG] Problemas extraídos do Gemini:", JSON.stringify(parsed, null, 2));
+    console.log("🔍 [DEBUG] Objeto JSON parseado:", JSON.stringify(parsed, null, 2));
     const generatedProblems: any[] = parsed.problems || [];
 
     if (generatedProblems.length === 0) {
@@ -207,15 +211,22 @@ Retorne APENAS um objeto JSON no formato:
       };
     });
 
+    console.log(`🚀 [DEBUG] Tentando inserir ${rows.length} problemas no banco para o user ${userId}`);
+    if (rows.length > 0) {
+      console.log("📋 [DEBUG] Exemplo da primeira linha para validação de colunas:", JSON.stringify(rows[0]));
+    }
+
     const { data, error: dbError } = await supabase
       .from("detected_problems")
       .insert(rows)
       .select();
 
     if (dbError) {
-      console.error("Database error:", dbError);
+      console.error("❌ [DATABASE ERROR] Erro crítico no INSERT:", JSON.stringify(dbError));
       return new Response(JSON.stringify({
-        error: "Erro ao salvar no banco (Tabela detected_problems não encontrada ou erro de RLS)",
+        error: "Erro ao salvar no banco (Verifique RLS ou Schema)",
+        code: dbError.code,
+        message: dbError.message,
         details: dbError
       }), {
         status: 200,
