@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { COPYWRITER_SYSTEM_PROMPT, DESIGNER_SYSTEM_PROMPT } from "@/lib/copywriterAgent";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { callGemini } from "@/lib/geminiProxy";
 
 interface SavedLandingPage {
   id: string;
@@ -141,29 +142,17 @@ Apply the designer framework for all visual decisions, specifically using the ${
 
 Return ONLY valid HTML. No markdown. No explanation. Just the complete HTML file starting with <!DOCTYPE html>.`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            system_instruction: {
-              parts: [{ text: `${COPYWRITER_SYSTEM_PROMPT}\n\n${DESIGNER_SYSTEM_PROMPT}` }]
-            }
-          })
+      const { text } = await callGemini({
+        prompt,
+        generationConfig: { responseMimeType: "text/plain" },
+        system_instruction: {
+          parts: [{ text: `${COPYWRITER_SYSTEM_PROMPT}\n\n${DESIGNER_SYSTEM_PROMPT}` }]
         }
-      );
+      });
 
-      const data = await response.json();
+      if (!text) throw new Error("Gemini não retornou conteúdo");
 
-      if (!response.ok) {
-        const errorMsg = data.error?.message || response.statusText || "Erro desconhecido";
-        throw new Error(`Falha na API do Gemini: ${errorMsg}`);
-      }
-
-      let html = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      html = html.replace(/```html/g, "").replace(/```/g, "").trim();
+      let html = text.replace(/```html/g, "").replace(/```/g, "").trim();
       
       setGeneratedHtml(html);
       

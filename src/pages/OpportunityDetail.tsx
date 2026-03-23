@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Json } from "@/integrations/supabase/types";
 import { BlueprintView, Blueprint } from "@/components/BlueprintView";
+import { callGemini } from "@/lib/geminiProxy";
 
 function getScoreColor(score: number) {
   if (score >= 80) return "hsl(150, 60%, 50%)";
@@ -88,24 +89,13 @@ Retorne APENAS um JSON válido seguindo exatamente esta estrutura:
   "monetization": "string"
 }`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        }
-      );
+      const { text } = await callGemini({ prompt });
 
-      const data = await response.json();
-      if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-        throw new Error("Resposta inválida do Gemini");
-      }
-      
-      const text = data.candidates[0].content.parts[0].text;
+      if (!text) throw new Error("Resposta inválida do Gemini");
+
       const cleanJson = text.replace(/```json|```/g, "").trim();
       const result = JSON.parse(cleanJson);
-      
+
       setMvpPlan(result);
       toast.success("Plano MVP gerado com sucesso!");
     } catch (err: any) {
@@ -158,24 +148,13 @@ Retorne APENAS um JSON válido seguindo exatamente esta estrutura:
   "architecture_notes": ["string"]
 }`;
 
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${import.meta.env.VITE_GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        }
-      );
+      const { text } = await callGemini({ prompt });
 
-      const data = await response.json();
-      if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-        throw new Error("Resposta inválida do Gemini");
-      }
+      if (!text) throw new Error("Resposta inválida do Gemini");
 
-      const text = data.candidates[0].content.parts[0].text;
       const cleanJson = text.replace(/```json|```/g, "").trim();
       const result = JSON.parse(cleanJson);
-      
+
       setBlueprint(result);
       toast.success("Blueprint gerado!");
     } catch (err: any) {
