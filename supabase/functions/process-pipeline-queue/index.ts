@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -15,7 +14,7 @@ ESTRUTURA METODOLÓGICA (Framework PAS + Emoção):
 3. SOLUÇÃO (Valor Oculto) - 10 a 20s: Entregue o segredo. Uma automação incopiável, ou uma configuração escondida na IA, algo prático.
 4. EMOÇÃO FINAL (Call to Action) - 20 a 30s: Gere sentimento de urgência ou FOMO e chame para ação (Ex: "Salve isso antes que excluam." ou "Comenta 'EU QUERO' pra receber o fluxo completo.")`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // 1. Handle CORS preflight request
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });

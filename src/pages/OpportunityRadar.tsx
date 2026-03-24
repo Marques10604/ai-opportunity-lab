@@ -229,14 +229,23 @@ export default function OpportunityRadar() {
         throw new Error("Dados do problema não encontrados na base local.");
       }
 
-      // UX Ouro: Impede requisição e avisa o usuário baseando-se no pipeline_status real-time do cache
-      if (problemData.pipeline_status === 'pending' || problemData.pipeline_status === 'processing') {
-        toast.info("⏳ A IA ainda está trabalhando neste problema em background...\nVolte e clique novamente em alguns segundos.", { duration: 4000 });
+      // Inicia ou Reinicia o pipeline se estiver travado ou não iniciado
+      if (!problemData.pipeline_status || problemData.pipeline_status === 'pending' || problemData.pipeline_status === 'processing') {
+        console.log("🚀 Disparando fallback do Pipeline Queue para ID:", problemId);
+        supabase.functions.invoke('process-pipeline-queue', { 
+          body: { userId: user?.id } 
+        }).catch(e => console.error("Erro call queue:", e));
+
+        toast.info("🔧 Acionando IA em background...\nO motor de descoberta foi ativado. Clique novamente em 5-10 segundos.", { 
+          duration: 4000,
+          description: "Status: " + (problemData.pipeline_status || 'Iniciando') 
+        });
         return;
       }
 
       if (problemData.pipeline_status === 'error') {
         toast.error(`A IA falhou ao processar: ${problemData.pipeline_error || 'Desconhecido'}`);
+        // Opcional: Permitir retentar resetando para pending
         return;
       }
 
