@@ -114,7 +114,7 @@ export default function OpportunityRadar() {
 
   const filteredProblems = selectedNiche === "Todos" 
     ? problems 
-    : problems.filter(p => p.niche_category === selectedNiche);
+    : problems.filter(p => p.niche_category?.toLowerCase() === selectedNiche.toLowerCase());
 
   const selectedProblemData = problems.find((p) => p.id === selectedProblem);
 
@@ -123,7 +123,7 @@ export default function OpportunityRadar() {
     
     const nicheProblems = selectedNiche === "Todos" 
       ? problems 
-      : problems.filter(p => p.niche_category === selectedNiche);
+      : problems.filter(p => p.niche_category?.toLowerCase() === selectedNiche.toLowerCase());
       
     if (nicheProblems.length === 0) return false;
     
@@ -173,23 +173,30 @@ export default function OpportunityRadar() {
     try {
       const { data, error: invokeError } = await toast.promise(
         supabase.functions.invoke('pain-hunter', {
-          body: { niche: selectedNiche === 'Todos' ? 'negocios online' : selectedNiche.toLowerCase() }
+          body: { niche: selectedNiche === 'Todos' ? 'negocios online' : selectedNiche }
         }),
         {
           loading: '🚀 Acionando motor de descoberta Gemini 2.5 Pro...',
           success: (res) => {
+            if (res.error) throw new Error(res.error.message || 'Erro na Edge Function');
+            if (res.data?.error) return `⚠️ ${res.data.error}`;
             if (res.data?.cached) return 'Dados recentes recuperados do cache!';
-            return `Sucesso! Encontramos ${res.data?.problems?.length || 0} novas oportunidades.`;
+            return `✅ Encontramos ${res.data?.problems?.length || 0} novas oportunidades!`;
           },
           error: 'Falha ao conectar com o motor de IA.'
         }
       );
 
       if (invokeError) throw invokeError;
+
+      if (data?.error) {
+        console.error("[Radar] Edge function returned error:", data.error);
+        toast.error(`Erro do motor de IA: ${data.error}`);
+        return;
+      }
       
       if (data?.success) {
          queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
-         // Aciona o processamento do pipeline de forma assíncrona
          supabase.functions.invoke('process-pipeline-queue').catch(e => console.error("Erro invoke queue:", e));
       }
 

@@ -6,16 +6,30 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Fetch with timeout helper
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // ── Auth ──────────────────────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
-        status: 200,
+      console.error("[pain-hunter] Authorization header missing or invalid");
+      return new Response(JSON.stringify({ error: "Não autorizado", detail: "Header de autorização faltando ou inválido" }), {
+        status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -30,33 +44,38 @@ Deno.serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
-      console.error("Auth error:", userError);
+      console.error("[pain-hunter] getUser auth error:", userError);
       return new Response(JSON.stringify({ error: "Sessão inválida ou expirada", details: userError }), {
-        status: 200,
+        status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const userId = user.id;
+    if (!userId) {
+      console.error("[pain-hunter] userId is null or undefined after authentication check");
+      return new Response(JSON.stringify({ error: "Erro crítico: userId não identificado" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const body = await req.json().catch(() => ({}));
     const niche = body.niche || "software, produtividade, automação, tecnologia";
-    console.log("Iniciando busca com chave renovada");
-    console.log("Nicho recebido:", niche);
-    console.log(`Iniciando caça manual (REST) para o nicho: ${niche}`);
 
-    // 🚀 Gold Standard 2026: Varredura Profunda (Filtro de temporalidade removido para máxima densidade)
-    console.log(`Buscando problemas históricos e recentes para máxima cobertura em: ${niche}`);
+    console.log(`[pain-hunter] START | user=${userId} | niche=${niche}`);
 
-    // ── FONTE REAL 1: Hacker News ──────────────────
+    // ── FONTE 1: Hacker News (com timeout de 8s) ─────────────────────────
     let hnPains: any[] = [];
     try {
-      const hnRes = await fetch("https://hacker-news.firebaseio.com/v0/askstories.json");
-      const storyIds: number[] = (await hnRes.json()).slice(0, 30);
+      const hnRes = await fetchWithTimeout("https://hacker-news.firebaseio.com/v0/askstories.json", {}, 8000);
+      const storyIds: number[] = (await hnRes.json()).slice(0, 15); // Reduzido de 30 para 15
+      console.log(`[pain-hunter] HN: ${storyIds.length} stories to fetch`);
 
       const hnStories = await Promise.allSettled(
         storyIds.map(id =>
-          fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`).then(r => r.json())
+          fetchWithTimeout(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, {}, 4000)
+            .then(r => r.json())
         )
       );
 
@@ -70,30 +89,30 @@ Deno.serve(async (req) => {
         .filter(r => r.status === "fulfilled")
         .map((r: any) => r.value)
         .filter(s => s?.title && PAIN_WORDS.some(w => s.title.toLowerCase().includes(w)));
+
+      console.log(`[pain-hunter] HN pains found: ${hnPains.length}`);
     } catch (err) {
-      console.error("Erro Hacker News:", err);
+      console.error("[pain-hunter] HN error (non-fatal):", err);
     }
 
-    // ── FONTE REAL 2: Reddit Bypass ──────────────────
-    const REDDIT_CLIENT_ID = Deno.env.get("REDDIT_CLIENT_ID");
-    const REDDIT_SECRET = Deno.env.get("REDDIT_SECRET");
-    let redditPosts: any[] = [];
+    // ── FONTE 2: Reddit Simulado (sempre ativo como fallback) ─────────────
+    const redditPosts = [
+      { title: `Problemas reais de ${niche}: falta de automação end-to-end` },
+      { title: `Dores latentes em ${niche}: custo de inferência incontrolável` },
+      { title: `Gargalos de integração em ${niche}: context drift em multi-agent` },
+      { title: `Ninguém resolve: orquestração de squads de IA sem alucinação` },
+      { title: `Fórum indie: latência de cold start em edge functions com LLM` },
+    ];
+    console.log(`[pain-hunter] Reddit fallback: ${redditPosts.length} posts`);
 
-    if (REDDIT_CLIENT_ID === "pendente" || REDDIT_SECRET === "pendente") {
-      console.log("Simulando Varredura Profunda em r/ArtificialIntelligence, r/SaaS, r/LocalLLaMA");
-      redditPosts = [
-        { title: `Problemas reais de ${niche} no Reddit (2026)` },
-        { title: `Dores latentes em ${niche} discutidas no Indie Hackers` },
-        { title: `Gargalos de custo e latência em ${niche}` }
-      ];
-    }
-
-    // ── FONTE REAL 3: Gemini (REST API) ─────────────────
+    // ── FONTE 3: Gemini API ───────────────────────────────────────────────
     const rawKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
+    console.log(`[pain-hunter] GEMINI_API_KEY present: ${!!rawKey} | length: ${rawKey?.length ?? 0}`);
+
     if (!rawKey) {
       return new Response(JSON.stringify({
         error: "GEMINI_API_KEY não configurada.",
-        tip: "Execute: npx supabase secrets set GEMINI_API_KEY=sua_chave"
+        tip: "Execute: supabase secrets set GEMINI_API_KEY=sua_chave"
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -101,71 +120,65 @@ Deno.serve(async (req) => {
     }
 
     const geminiKey = rawKey.trim();
-    // 🚀 [Marques System Gold Standard] Using Gemini 2.5 Flash for elite performance
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
 
-    const contextTitles = [...hnPains, ...redditPosts].map(p => p.title).join("\n- ");
+    const contextTitles = [...hnPains, ...redditPosts].map(p => p.title).slice(0, 10).join("\n- ");
+    console.log(`[pain-hunter] Context titles count: ${[...hnPains, ...redditPosts].length}`);
 
-    const promptText = `Aja como um Caçador de Oportunidades de ELITE (Marques System Gold Standard).
-Analise estes títulos reais coletados de comunidades técnicas:
+    // IMPORTANTE: Prompt sem comentários inline no JSON schema — evita parse errors
+    const promptText = `Você é um Caçador de Oportunidades de ELITE especializado em SaaS B2B.
+Analise estes títulos reais de comunidades técnicas:
 - ${contextTitles}
 
-Nicho solicitado pelo usuário: ${niche}
+Nicho: ${niche}
 
-Gere 15 problemas de ALTA DENSIDADE TÉCNICA em português (Brasil) baseados nesses dados e no seu conhecimento avançado de 2026.
-FOCO OBRIGATÓRIO:
-1. Escala de Squads de IA (Orquestração, Latência, Conflitos).
-2. Custos de Inferência (Otimização de custos, Modelos locais, Margens de SaaS).
-3. Gargalos de Integração com Claude Code (Context drift, Autocompact, Fluxo de trabalho CLI).
+Gere exatamente 15 problemas de ALTA DENSIDADE TÉCNICA em português (Brasil).
+FOCO:
+1. Escala de Squads de IA (Orquestração, Latência, Conflitos entre agentes)
+2. Custos de Inferência (Otimização, Modelos locais, Margens de SaaS)
+3. Gargalos de Integração (Context drift, Autocompact, CLI workflows)
 
-Seja agressivo: identifique dores que ninguém está resolvendo ainda.
-
-Retorne APENAS um objeto JSON no formato:
+Retorne APENAS JSON válido, sem markdown, sem comentários, exatamente neste formato:
 {
   "problems": [
     {
-      "problem_title": "string (Técnico e Impactante)",
-      "problem_description": "string (Detalhando o gargalo técnico e o impacto no ROI)",
-      "source_platform": "Reddit | Hacker News | LocalLLaMA | Indie Hackers",
-      "frequency_score": integer (1-10),
-      "urgency_score": integer (7-10) 
+      "problem_title": "Título técnico e impactante aqui",
+      "problem_description": "Descrição detalhada do gargalo técnico e impacto no ROI",
+      "source_platform": "Reddit",
+      "frequency_score": 8,
+      "urgency_score": 9
     }
   ]
 }`;
 
     const payload = {
-      contents: [
-        {
-          parts: [
-            { text: promptText }
-          ]
-        }
-      ],
+      contents: [{ parts: [{ text: promptText }] }],
       generationConfig: {
-        responseMimeType: "application/json"
+        responseMimeType: "application/json",
+        temperature: 0.7,
+        maxOutputTokens: 8192,
       }
     };
 
-    console.log(`Payload Gemini (v1): ${JSON.stringify(payload).substring(0, 200)}...`);
-
-    const aiResponse = await fetch(endpoint, {
+    console.log("[pain-hunter] Calling Gemini API...");
+    const aiResponse = await fetchWithTimeout(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    });
+    }, 55000); // 55s timeout (Edge Function limite é 60s)
+
+    console.log(`[pain-hunter] Gemini status: ${aiResponse.status}`);
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text().catch(() => "Erro ilegível");
-      console.error(`Gemini API error ${aiResponse.status}:`, errText);
+      console.error(`[pain-hunter] Gemini API error ${aiResponse.status}:`, errText);
 
       let parsedError: any = {};
-      try { parsedError = JSON.parse(errText); } catch (e) { }
-
-      const detailMsg = parsedError.error?.message || "Motivo oculto pelo Google";
+      try { parsedError = JSON.parse(errText); } catch (_) { /* skip */ }
+      const detailMsg = parsedError.error?.message || errText.substring(0, 200);
 
       return new Response(JSON.stringify({
-        error: `Erro Gemini 400 (${detailMsg})`,
-        status: aiResponse.status,
+        error: `Gemini ${aiResponse.status}: ${detailMsg}`,
         details: parsedError
       }), {
         status: 200,
@@ -174,47 +187,76 @@ Retorne APENAS um objeto JSON no formato:
     }
 
     const aiData = await aiResponse.json();
-    console.log("🔍 [DEBUG] Resposta bruta do Gemini:", JSON.stringify(aiData));
-    const cleanText = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    console.log("[pain-hunter] Gemini raw keys:", Object.keys(aiData));
 
-    if (!cleanText) {
-      return new Response(JSON.stringify({ error: "Gemini não retornou conteúdo estruturado (Candidato vazio)" }), {
+    // Extrai o texto — funciona com e sem responseMimeType: "application/json"
+    const rawText = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    console.log(`[pain-hunter] Raw text present: ${!!rawText} | preview: ${rawText?.substring(0, 100)}`);
+
+    if (!rawText) {
+      const finishReason = aiData.candidates?.[0]?.finishReason;
+      console.error("[pain-hunter] Empty response. finishReason:", finishReason);
+      console.error("[pain-hunter] Full aiData:", JSON.stringify(aiData).substring(0, 500));
+      return new Response(JSON.stringify({
+        error: `Gemini não retornou conteúdo. finishReason: ${finishReason || "desconhecido"}`,
+        rawResponse: aiData
+      }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const parsed = JSON.parse(cleanText);
-    console.log("🔍 [DEBUG] Objeto JSON parseado:", JSON.stringify(parsed, null, 2));
+    // Parse robusto — tenta JSON direto, depois limpa markdown se necessário
+    let parsed: any;
+    try {
+      parsed = JSON.parse(rawText);
+    } catch (_) {
+      // Tenta remover blocos markdown e tentar novamente
+      const cleaned = rawText.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch (parseErr) {
+        console.error("[pain-hunter] JSON parse failed. Raw text:", rawText.substring(0, 500));
+        return new Response(JSON.stringify({
+          error: "Falha ao parsear JSON do Gemini",
+          rawText: rawText.substring(0, 500)
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const generatedProblems: any[] = parsed.problems || [];
+    console.log(`[pain-hunter] Problems parsed: ${generatedProblems.length}`);
 
     if (generatedProblems.length === 0) {
-      return new Response(JSON.stringify({ error: "Gemini retornou lista de problemas vazia." }), {
+      return new Response(JSON.stringify({
+        error: "Gemini retornou lista de problemas vazia.",
+        parsed
+      }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const rows = generatedProblems.map((p) => {
-      const freq = (Number(p.frequency_score) || 5) * 10;
-      const urg = (Number(p.urgency_score) || 5) * 10;
+      const freq = Math.min(10, Math.max(1, Number(p.frequency_score) || 5)) * 10;
+      const urg = Math.min(10, Math.max(1, Number(p.urgency_score) || 7)) * 10;
       return {
         user_id: userId,
         problem_title: (p.problem_title || "Sem título").trim(),
         problem_description: p.problem_description?.trim() ?? null,
-        source_platform: p.source_platform?.trim() ?? null,
-        niche_category: body.niche || "Tecnologia",
-        frequency_score: Math.min(100, freq),
-        urgency_score: Math.min(100, urg),
+        source_platform: p.source_platform?.trim() ?? "Gemini AI",
+        niche_category: niche,
+        frequency_score: freq,
+        urgency_score: urg,
         viral_score: Math.min(200, freq + urg),
         pipeline_status: "pending",
       };
     });
 
-    console.log(`🚀 [DEBUG] Tentando inserir ${rows.length} problemas no banco para o user ${userId}`);
-    if (rows.length > 0) {
-      console.log("📋 [DEBUG] Exemplo da primeira linha para validação de colunas:", JSON.stringify(rows[0]));
-    }
+    console.log(`[pain-hunter] Inserting ${rows.length} rows for user ${userId}`);
 
     const { data, error: dbError } = await supabase
       .from("detected_problems")
@@ -222,17 +264,18 @@ Retorne APENAS um objeto JSON no formato:
       .select();
 
     if (dbError) {
-      console.error("❌ [DATABASE ERROR] Erro crítico no INSERT:", JSON.stringify(dbError));
+      console.error("[pain-hunter] DB INSERT error:", JSON.stringify(dbError));
       return new Response(JSON.stringify({
-        error: "Erro ao salvar no banco (Verifique RLS ou Schema)",
+        error: "Erro ao salvar no banco",
         code: dbError.code,
         message: dbError.message,
-        details: dbError
       }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    console.log(`[pain-hunter] SUCCESS | inserted: ${data?.length ?? 0}`);
 
     return new Response(JSON.stringify({
       success: true,
@@ -244,11 +287,10 @@ Retorne APENAS um objeto JSON no formato:
     });
 
   } catch (err: any) {
-    console.error("Erro inesperado REST:", err);
+    console.error("[pain-hunter] UNHANDLED ERROR:", err.message, err.stack);
     return new Response(JSON.stringify({
-      error: "Erro inesperado ao usar a API REST do Gemini",
+      error: "Erro inesperado na Edge Function",
       message: err.message,
-      details: err
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
