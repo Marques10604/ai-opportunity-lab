@@ -63,13 +63,81 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const niche = body.niche || "software, produtividade, automação, tecnologia";
 
-    console.log(`[pain-hunter] START | user=${userId} | niche=${niche}`);
+    console.log(`[pain-hunter] START | niche=${niche}`);
+
+    // ── MARRETADA 1: Cache Semântico (ROI) ─────────────────────────────
+    const rawKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
+    if (!rawKey) {
+      return new Response(JSON.stringify({ error: "GEMINI_API_KEY não configurada." }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const geminiKey = rawKey.trim();
+
+    // 1. Gerar Embedding do Nicho
+    let nicheEmbedding: number[] = [];
+    try {
+       const embedRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${geminiKey}`, {
+         method: "POST",
+         headers: { "Content-Type": "application/json" },
+         body: JSON.stringify({ content: { parts: [{ text: niche }] } })
+       });
+       if (embedRes.ok) {
+         const embedData = await embedRes.json();
+         nicheEmbedding = embedData.embedding.values;
+       }
+    } catch (e) {
+       console.error("[pain-hunter] Embedding error:", e);
+    }
+
+    // 2. Buscar no Cache com Similaridade > 0.95
+    if (nicheEmbedding.length > 0) {
+      const { data: cacheData, error: cacheErr } = await supabase.rpc('match_semantic_cache', {
+        query_embedding: nicheEmbedding,
+        match_threshold: 0.95,
+        match_count: 1
+      });
+
+      if (!cacheErr && cacheData && cacheData.length > 0) {
+        console.log(`[pain-hunter] ROI HIT: Cache semântico encontrado com similaridade ${cacheData[0].similarity}`);
+        const cachedProblems = cacheData[0].cached_response.problems || [];
+        
+        // Simular inserção (ou apenas retornar do cache)
+        // Para manter consistência, vamos inserir no DB de detected_problems
+        const rows = cachedProblems.map((p: any) => ({
+          user_id: userId,
+          problem_title: p.problem_title,
+          problem_description: p.problem_description,
+          source_platform: p.source_platform || "Semantic Cache",
+          niche_category: niche,
+          frequency_score: p.frequency_score * 10,
+          urgency_score: p.urgency_score * 10,
+          viral_score: (p.frequency_score * 10) + (p.urgency_score * 10),
+          pipeline_status: "pending",
+        }));
+
+        const { data: inserted, error: insErr } = await supabase.from("detected_problems").insert(rows).select();
+        
+        if (!insErr) {
+          return new Response(JSON.stringify({
+            success: true,
+            cached: true,
+            inserted: inserted?.length || 0,
+            problems: inserted,
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          });
+        }
+      }
+    }
 
     // ── FONTE 1: Hacker News (com timeout de 8s) ─────────────────────────
     let hnPains: any[] = [];
     try {
       const hnRes = await fetchWithTimeout("https://hacker-news.firebaseio.com/v0/askstories.json", {}, 8000);
-      const storyIds: number[] = (await hnRes.json()).slice(0, 15); // Reduzido de 30 para 15
+      const storyIds: number[] = (await hnRes.json()).slice(0, 15);
       console.log(`[pain-hunter] HN: ${storyIds.length} stories to fetch`);
 
       const hnStories = await Promise.allSettled(
@@ -79,53 +147,29 @@ Deno.serve(async (req) => {
         )
       );
 
-      const PAIN_WORDS = [
-        "alternative", "broken", "hate", "frustrat", "doesn't work",
-        "missing feature", "any tool for", "how do I", "problem with",
-        "impossible to", "I can't", "nobody solves", "workaround"
-      ];
-
+      const PAIN_WORDS = ["alternative", "broken", "hate", "frustrat", "doesn't work", "missing feature", "how do I", "problem with"];
       hnPains = hnStories
         .filter(r => r.status === "fulfilled")
         .map((r: any) => r.value)
         .filter(s => s?.title && PAIN_WORDS.some(w => s.title.toLowerCase().includes(w)));
-
-      console.log(`[pain-hunter] HN pains found: ${hnPains.length}`);
     } catch (err) {
-      console.error("[pain-hunter] HN error (non-fatal):", err);
+      console.error("[pain-hunter] HN error (non-fatal)");
     }
 
-    // ── FONTE 2: Reddit Simulado (sempre ativo como fallback) ─────────────
+    // ── FONTE 2: Reddit Simulado ──────────────────────────────────────────
     const redditPosts = [
       { title: `Problemas reais de ${niche}: falta de automação end-to-end` },
       { title: `Dores latentes em ${niche}: custo de inferência incontrolável` },
       { title: `Gargalos de integração em ${niche}: context drift em multi-agent` },
-      { title: `Ninguém resolve: orquestração de squads de IA sem alucinação` },
-      { title: `Fórum indie: latência de cold start em edge functions com LLM` },
     ];
-    console.log(`[pain-hunter] Reddit fallback: ${redditPosts.length} posts`);
 
     // ── FONTE 3: Gemini API ───────────────────────────────────────────────
-    const rawKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
-    console.log(`[pain-hunter] GEMINI_API_KEY present: ${!!rawKey} | length: ${rawKey?.length ?? 0}`);
-
-    if (!rawKey) {
-      return new Response(JSON.stringify({
-        error: "GEMINI_API_KEY não configurada.",
-        tip: "Execute: supabase secrets set GEMINI_API_KEY=sua_chave"
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const geminiKey = rawKey.trim();
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
 
     const contextTitles = [...hnPains, ...redditPosts].map(p => p.title).slice(0, 10).join("\n- ");
     console.log(`[pain-hunter] Context titles count: ${[...hnPains, ...redditPosts].length}`);
 
-    // IMPORTANTE: Prompt sem comentários inline no JSON schema — evita parse errors
+    // Prompt sem comentários
     const promptText = `Você é um Caçador de Oportunidades de ELITE especializado em SaaS B2B.
 Analise estes títulos reais de comunidades técnicas:
 - ${contextTitles}
@@ -135,15 +179,15 @@ Nicho: ${niche}
 Gere exatamente 15 problemas de ALTA DENSIDADE TÉCNICA em português (Brasil).
 FOCO:
 1. Escala de Squads de IA (Orquestração, Latência, Conflitos entre agentes)
-2. Custos de Inferência (Otimização, Modelos locais, Margens de SaaS)
-3. Gargalos de Integração (Context drift, Autocompact, CLI workflows)
+2. Custos de Inferência (Otimização, Modelos locais)
+3. Gargalos de Integração (Context drift, CLI workflows)
 
-Retorne APENAS JSON válido, sem markdown, sem comentários, exatamente neste formato:
+Retorne APENAS JSON válido, sem markdown:
 {
   "problems": [
     {
-      "problem_title": "Título técnico e impactante aqui",
-      "problem_description": "Descrição detalhada do gargalo técnico e impacto no ROI",
+      "problem_title": "Título técnico",
+      "problem_description": "Descrição detalhada",
       "source_platform": "Reddit",
       "frequency_score": 8,
       "urgency_score": 9
@@ -276,6 +320,18 @@ Retorne APENAS JSON válido, sem markdown, sem comentários, exatamente neste fo
     }
 
     console.log(`[pain-hunter] SUCCESS | inserted: ${data?.length ?? 0}`);
+
+    // 🔥 MARRETADA 1 (FINAL): Salvar no Cache Semântico
+    if (nicheEmbedding && nicheEmbedding.length > 0) {
+      supabase.from("ai_semantic_cache").insert({
+        user_id: userId,
+        niche_label: niche,
+        query_text: niche,
+        query_embedding: nicheEmbedding,
+        cached_response: { problems: generatedProblems }
+      }).then(() => console.log("[pain-hunter] ROI CACHED: Novo nicho salvo no cache semântico."))
+        .catch(e => console.error("Erro salvar cache:", e));
+    }
 
     return new Response(JSON.stringify({
       success: true,

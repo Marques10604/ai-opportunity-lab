@@ -244,8 +244,17 @@ export default function OpportunityRadar() {
       }
 
       if (problemData.pipeline_status === 'error') {
-        toast.error(`A IA falhou ao processar: ${problemData.pipeline_error || 'Desconhecido'}`);
-        // Opcional: Permitir retentar resetando para pending
+        toast.error(`A IA falhou ao processar: ${problemData.pipeline_error || 'Desconhecido'}`, {
+          description: "Clique no botão 'Reiniciar Pipeline' para tentar novamente.",
+          action: {
+            label: "Reiniciar",
+            onClick: async () => {
+              await supabase.from("detected_problems").update({ pipeline_status: "pending", pipeline_error: null }).eq("id", problemId);
+              supabase.functions.invoke('process-pipeline-queue', { body: { userId: user?.id } });
+              toast.success("Reiniciando pipeline...");
+            }
+          }
+        });
         return;
       }
 
