@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-execution-id",
 };
 
 Deno.serve(async (req) => {
@@ -12,32 +12,48 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // ── 1. Auth & Essentials ──────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!authHeader) throw new Error("Não autenticado");
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
-        status: 401,
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) throw new Error("Sessão inválida");
+
+    // ── 2. EXECUTION_ID (Idempotência) ──────────────────────────────────────
+    const executionId = req.headers.get("x-execution-id") ?? crypto.randomUUID();
+
+    // ── 3. Cache Check ────────────────────────────────────────────────────
+    const { data: cached } = await supabase
+      .from("pipeline_cache")
+      .select("*")
+      .eq("execution_id", executionId)
+      .eq("status", "completed")
+      .maybeSingle();
+
+    if (cached) {
+      console.log(`Cache hit para executionId: ${executionId}`);
+      return new Response(JSON.stringify({ success: true, cached: true, data: cached }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claimsData.claims.sub;
+    // ── 4. AG-UI Start Event ──────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "RUN_STARTED",
+      detail: "Iniciando detecção de padrões entre problemas",
+      user_id: user.id,
+      level: "info",
+    });
 
-    // Fetch user's detected problems
+    // ── 5. Fetch Data ─────────────────────────────────────────────────────
     const { data: problems, error: probError } = await supabase
       .from("detected_problems")
       .select("id, problem_title, problem_description, source_platform, frequency_score, urgency_score, viral_score")
@@ -53,108 +69,66 @@ Deno.serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const problemsSummary = problems.map((p, i) => `${i + 1}. "${p.problem_title}" — ${p.problem_description || "sem descrição"} (viral: ${p.viral_score || 0})`).join("\n");
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // ── 6. Call Gemini Proxy ──────────────────────────────────────────────
+    const system_instruction = {
+      parts: [{
+        text: `You are a data analyst that identifies recurring patterns in user complaints. 
+Group similar problems into patterns. 
+Always respond in JSON format. 
+Use Portuguese (Brazil) for all text.`
+      }]
+    };
+
+    const prompt = `Analyze these ${problems.length} user problems and identify 3–6 recurring patterns (groups of similar problems):
+
+${problemsSummary}
+
+Return a JSON object with a "patterns" array. Each pattern must have:
+- pattern_title: Title of the pattern in PT-BR
+- pattern_description: Detailed description in PT-BR
+- related_problem_indices: Array of 1-based indices of problems belonging to this pattern`;
+
+    const proxyRes = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Authorization": authHeader,
         "Content-Type": "application/json",
+        "x-execution-id": executionId,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: "You are a data analyst that identifies recurring patterns in user complaints. Group similar problems into patterns. Always respond by calling the provided tool. Use Portuguese (Brazil) for all text.",
-          },
-          {
-            role: "user",
-            content: `Analyze these ${problems.length} user problems and identify 3–6 recurring patterns (groups of similar problems):\n\n${problemsSummary}\n\nFor each pattern, provide a title, description, list of related problem indices (1-based), total occurrences count, and average viral score of related problems.`,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_patterns",
-              description: "Return detected problem patterns.",
-              parameters: {
-                type: "object",
-                properties: {
-                  patterns: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        pattern_title: { type: "string" },
-                        pattern_description: { type: "string" },
-                        related_problem_indices: {
-                          type: "array",
-                          items: { type: "integer" },
-                          description: "1-based indices of problems belonging to this pattern",
-                        },
-                      },
-                      required: ["pattern_title", "pattern_description", "related_problem_indices"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["patterns"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "return_patterns" } },
+        prompt,
+        system_instruction,
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
       }),
     });
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em instantes." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify({ error: "Erro ao detectar padrões" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!proxyRes.ok) {
+      const errorData = await proxyRes.json().catch(() => ({ error: "Erro no Proxy" }));
+      throw new Error(`Proxy error: ${errorData.error || "Erro desconhecido"}`);
     }
 
-    const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
-      return new Response(JSON.stringify({ error: "IA não retornou dados estruturados" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const proxyData = await proxyRes.json();
+    const aiText = proxyData.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!aiText) throw new Error("IA não retornou conteúdo");
+
+    let parsedResult;
+    try {
+      parsedResult = JSON.parse(aiText);
+    } catch (e) {
+      console.error("Erro ao fazer parse do JSON do Gemini:", aiText);
+      throw new Error("Resposta da IA não é um JSON válido");
     }
 
-    const parsed = JSON.parse(toolCall.function.arguments);
-    const patterns: any[] = parsed.patterns || [];
+    const patterns = parsedResult.patterns || [];
+    if (patterns.length === 0) throw new Error("Nenhum padrão detectado pela IA");
 
-    if (patterns.length === 0) {
-      return new Response(JSON.stringify({ error: "Nenhum padrão detectado" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Build rows with computed stats
-    const rows = patterns.map((p) => {
+    // ── 7. Process & Save Results ─────────────────────────────────────────
+    const rows = patterns.map((p: any) => {
       const indices = (p.related_problem_indices || []).map((i: number) => i - 1);
       const relatedProblems = indices
         .filter((i: number) => i >= 0 && i < problems.length)
@@ -170,7 +144,7 @@ Deno.serve(async (req) => {
         : 0;
 
       return {
-        user_id: userId,
+        user_id: user.id,
         pattern_title: p.pattern_title,
         pattern_description: p.pattern_description,
         related_problems: relatedProblems,
@@ -184,20 +158,38 @@ Deno.serve(async (req) => {
       .insert(rows)
       .select();
 
-    if (insertError) {
-      console.error("Insert error:", insertError);
-      return new Response(JSON.stringify({ error: insertError.message }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (insertError) throw insertError;
 
+    // ── 8. Log Event (AG-UI) ─────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STATE_DELTA",
+      detail: `Sucesso: ${inserted.length} padrões identificados e salvos.`,
+      user_id: user.id,
+      level: "info",
+    });
+
+    // ── 9. Pipeline Cache Persistence ────────────────────────────────────
+    await supabase.from("pipeline_cache").insert({
+      execution_id: executionId,
+      status: "completed",
+      combinations: inserted, // Usando combinations como placeholder para padrões no cache
+    });
+
+    // ── 10. Return Response ──────────────────────────────────────────────
     return new Response(JSON.stringify({ success: true, patterns: inserted }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    console.error("Erro inesperado:", err);
-    return new Response(JSON.stringify({ error: "Erro interno do servidor" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+
+  } catch (err: any) {
+    console.error("detect-patterns error:", err);
+    return new Response(
+      JSON.stringify({ error: err.message || "Erro interno" }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
   }
 });

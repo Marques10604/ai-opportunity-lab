@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-execution-id",
 };
 
 Deno.serve(async (req) => {
@@ -12,168 +12,124 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // ── 1. Auth & Essentials ──────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("Não autenticado");
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) throw new Error("Não autenticado");
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace("Bearer ", "")
+    );
+    if (authError || !user) throw new Error("Sessão inválida");
 
     const body = await req.json().catch(() => ({}));
     const nicheFilter = body.niche || null;
     const count = body.count || 8;
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    // ── 2. EXECUTION_ID (Idempotência) ──────────────────────────────────────
+    const executionId = req.headers.get("x-execution-id") ?? crypto.randomUUID();
 
+    // ── 3. Cache Check ────────────────────────────────────────────────────
+    const { data: cached } = await supabase
+      .from("pipeline_cache")
+      .select("*")
+      .eq("execution_id", executionId)
+      .eq("status", "completed")
+      .maybeSingle();
+
+    if (cached) {
+      console.log(`Cache hit para executionId: ${executionId}`);
+      return new Response(JSON.stringify({ success: true, cached: true, data: cached }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── 4. AG-UI Start Event ──────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "RUN_STARTED",
+      detail: "Iniciando descoberta de problemas via Gemini Proxy",
+      user_id: user.id,
+      level: "info",
+    });
+
+    // ── 5. Prepare AI Prompt ──────────────────────────────────────────────
     const today = new Date().toISOString().slice(0, 10);
     const nicheInstruction = nicheFilter
       ? `Focus specifically on the "${nicheFilter}" niche/industry.`
       : `Cover diverse niches: healthcare, e-commerce, finance, legal, real estate, HR, education, logistics, technology, marketing, productivity.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are an advanced market research AI that monitors internet communities to detect real user pain points. You simulate realistic data as if scraped from Reddit, Hacker News, Product Hunt, GitHub Issues, YouTube comments, and tech forums. Focus on problems that cause: loss of time, loss of money, operational frustration, or repeated complaints. Ignore trivial or weak problems. Only generate problems from the last 30-90 days. Always respond using the provided tool.`,
-          },
-          {
-            role: "user",
-            content: `Generate ${count} realistic, high-impact user problems detected from internet discussions as of ${today}.
+    const system_instruction = {
+      parts: [{
+        text: `You are an advanced market research AI that monitors internet communities to detect real user pain points. 
+You simulate realistic data as if scraped from Reddit, Hacker News, Product Hunt, GitHub Issues, YouTube comments, and tech forums. 
+Focus on problems that cause: loss of time, loss of money, operational frustration, or repeated complaints. 
+Always respond in JSON format following the requested structure. 
+All text must be in Portuguese (Brazil).`
+      }]
+    };
+
+    const prompt = `Generate ${count} realistic, high-impact user problems detected from internet discussions as of ${today}.
 
 ${nicheInstruction}
 
-For each problem, provide:
-1. A clear problem title (the pain point)
-2. A detailed description of the pain behind the complaint
-3. 2-3 example complaints as they would appear on forums
-4. The source platform where it was detected
-5. The niche/industry category
-6. Impact level based on business relevance and frequency
-7. Timing status: whether this is an emerging, growing, or saturated problem
-8. Frequency score (0-100) - how often this complaint appears
-9. Urgency score (0-100) - how urgent the problem is for users
-10. Related tools that could potentially solve this problem
+Return a JSON object with a "problems" array. Each problem must have:
+- problem_title: Clear title in PT-BR
+- problem_description: Detailed description in PT-BR
+- complaint_examples: Array of 2-3 realistic forum-style complaints in PT-BR
+- source_platform: One of ["Reddit", "Hacker News", "Product Hunt", "GitHub Issues", "YouTube", "Fóruns Tech"]
+- niche_category: Industry niche in PT-BR
+- impact_level: One of ["Baixo", "Médio", "Alto", "Crítico"]
+- timing_status: One of ["Emergente", "Crescendo", "Saturado"]
+- frequency_score: 0-100
+- urgency_score: 0-100
+- related_tools: Array of tool names`;
 
-All text must be in Portuguese (Brazil). Make problems specific, actionable, and realistic - they should feel like real complaints found online.`,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_discovered_problems",
-              description: "Return a list of discovered problems from internet monitoring.",
-              parameters: {
-                type: "object",
-                properties: {
-                  problems: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        problem_title: { type: "string", description: "Clear title of the pain point in PT-BR" },
-                        problem_description: { type: "string", description: "Detailed description of the underlying pain in PT-BR" },
-                        complaint_examples: {
-                          type: "array",
-                          items: { type: "string" },
-                          description: "2-3 example complaints as found on forums, in PT-BR",
-                        },
-                        source_platform: {
-                          type: "string",
-                          enum: ["Reddit", "Hacker News", "Product Hunt", "GitHub Issues", "YouTube", "Fóruns Tech"],
-                        },
-                        niche_category: {
-                          type: "string",
-                          description: "Industry niche in PT-BR (e.g. Saúde, E-commerce, Finanças, etc.)",
-                        },
-                        impact_level: {
-                          type: "string",
-                          enum: ["Baixo", "Médio", "Alto", "Crítico"],
-                        },
-                        timing_status: {
-                          type: "string",
-                          enum: ["Emergente", "Crescendo", "Saturado"],
-                        },
-                        frequency_score: { type: "integer", description: "0-100 frequency score" },
-                        urgency_score: { type: "integer", description: "0-100 urgency score" },
-                        related_tools: {
-                          type: "array",
-                          items: { type: "string" },
-                          description: "Names of tools that could solve this problem",
-                        },
-                      },
-                      required: [
-                        "problem_title",
-                        "problem_description",
-                        "complaint_examples",
-                        "source_platform",
-                        "niche_category",
-                        "impact_level",
-                        "timing_status",
-                        "frequency_score",
-                        "urgency_score",
-                        "related_tools",
-                      ],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["problems"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "return_discovered_problems" } },
+    // ── 6. Call Gemini Proxy ──────────────────────────────────────────────
+    const proxyRes = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
+      method: "POST",
+      headers: {
+        "Authorization": authHeader,
+        "Content-Type": "application/json",
+        "x-execution-id": executionId,
+      },
+      body: JSON.stringify({
+        prompt,
+        system_instruction,
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
       }),
     });
 
-    if (!aiResponse.ok) {
-      const status = aiResponse.status;
-      const errText = await aiResponse.text();
-      if (status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI gateway error ${status}: ${errText}`);
+    if (!proxyRes.ok) {
+      const errorData = await proxyRes.json();
+      throw new Error(`Proxy error: ${errorData.error || "Erro desconhecido"}`);
     }
 
-    const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
-      throw new Error("IA não retornou dados estruturados");
+    const proxyData = await proxyRes.json();
+    const aiText = proxyData.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!aiText) throw new Error("Proxy não retornou conteúdo da IA");
+
+    let parsedResult;
+    try {
+      parsedResult = JSON.parse(aiText);
+    } catch (e) {
+      console.error("Erro ao fazer parse do JSON do Gemini:", aiText);
+      throw new Error("Resposta da IA não é um JSON válido");
     }
 
-    const parsed = JSON.parse(toolCall.function.arguments);
-    const problems: any[] = parsed.problems || [];
+    const problems = parsedResult.problems || [];
+    if (problems.length === 0) throw new Error("Nenhum problema retornado pela IA");
 
-    if (problems.length === 0) {
-      throw new Error("Nenhum problema descoberto pela IA");
-    }
-
-    // Insert into detected_problems
-    const rows = problems.map((p) => ({
+    // ── 7. Save to Database ───────────────────────────────────────────────
+    const rows = problems.map((p: any) => ({
       user_id: user.id,
       problem_title: (p.problem_title || "Sem título").trim(),
       problem_description: p.problem_description?.trim() ?? null,
@@ -196,19 +152,28 @@ All text must be in Portuguese (Brazil). Make problems specific, actionable, and
 
     if (insertError) throw insertError;
 
-    // Log the action
-    await supabase.from("agent_logs").insert({
+    // ── 8. Log Event (AG-UI) ─────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STATE_DELTA",
+      detail: `Sucesso: ${inserted.length} novos problemas descobertos e salvos.`,
       user_id: user.id,
-      agent_name: "Caçador de Problemas",
-      action: "Descoberta de problemas na internet",
-      detail: `${inserted?.length || 0} problemas descobertos${nicheFilter ? ` no nicho ${nicheFilter}` : ""}.`,
       level: "info",
     });
 
+    // ── 9. Salvar resultado no pipeline_cache ─────────────────────────────
+    await supabase.from("pipeline_cache").insert({
+      execution_id: executionId,
+      status: "completed",
+      detected_problem_id: inserted[0]?.id ?? null,
+      content_ideas: rows,
+    });
+
+    // ── 10. Return Response ──────────────────────────────────────────────
     return new Response(
       JSON.stringify({
         success: true,
-        problems_discovered: inserted?.length || 0,
+        problems_discovered: inserted.length,
         problems: rows,
       }),
       {
@@ -216,10 +181,11 @@ All text must be in Portuguese (Brazil). Make problems specific, actionable, and
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (err) {
+
+  } catch (err: any) {
     console.error("discover-problems error:", err);
     return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Erro interno" }),
+      JSON.stringify({ error: err.message || "Erro interno" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

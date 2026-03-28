@@ -3,20 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-execution-id",
 };
-
-// Fetch with timeout helper
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000) {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    return res;
-  } finally {
-    clearTimeout(id);
-  }
-}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -24,331 +12,176 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // ── Auth ──────────────────────────────────────────────────────────────
+    // ── 1. Auth & Essentials ──────────────────────────────────────────────
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      console.error("[pain-hunter] Authorization header missing or invalid");
-      return new Response(JSON.stringify({ error: "Não autorizado", detail: "Header de autorização faltando ou inválido" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!authHeader) throw new Error("Não autenticado");
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !user) {
-      console.error("[pain-hunter] getUser auth error:", userError);
-      return new Response(JSON.stringify({ error: "Sessão inválida ou expirada", details: userError }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const userId = user.id;
-    if (!userId) {
-      console.error("[pain-hunter] userId is null or undefined after authentication check");
-      return new Response(JSON.stringify({ error: "Erro crítico: userId não identificado" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) throw new Error("Sessão inválida");
 
     const body = await req.json().catch(() => ({}));
-    const niche = body.niche || "software, produtividade, automação, tecnologia";
+    const niche = body.niche || "software, produtividade, automação";
 
-    console.log(`[pain-hunter] START | niche=${niche}`);
+    // ── 2. EXECUTION_ID (Idempotência) ──────────────────────────────────────
+    const executionId = req.headers.get("x-execution-id") ?? crypto.randomUUID();
 
-    // ── MARRETADA 1: Cache Semântico (ROI) ─────────────────────────────
-    const rawKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
-    if (!rawKey) {
-      return new Response(JSON.stringify({ error: "GEMINI_API_KEY não configurada." }), {
+    // ── 3. Cache Check ────────────────────────────────────────────────────
+    const { data: cached } = await supabase
+      .from("pipeline_cache")
+      .select("*")
+      .eq("execution_id", executionId)
+      .eq("status", "completed")
+      .maybeSingle();
+
+    if (cached) {
+      console.log(`Cache hit para pain-hunter: ${executionId}`);
+      return new Response(JSON.stringify({ success: true, cached: true, problems: cached.tools }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const geminiKey = rawKey.trim();
 
-    // 1. Gerar Embedding do Nicho
-    let nicheEmbedding: number[] = [];
+    // ── 4. AG-UI Start Event ──────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "RUN_STARTED",
+      detail: `Iniciando varredura profunda de dores no nicho: ${niche}`,
+      user_id: user.id,
+      level: "info",
+    });
+
+    // ── 5. Reddit Scraping (Vault Access) ─────────────────────────────────
+    let redditContext = "";
     try {
-       const embedRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key=${geminiKey}`, {
-         method: "POST",
-         headers: { "Content-Type": "application/json" },
-         body: JSON.stringify({ content: { parts: [{ text: niche }] } })
-       });
-       if (embedRes.ok) {
-         const embedData = await embedRes.json();
-         nicheEmbedding = embedData.embedding.values;
-       }
-    } catch (e) {
-       console.error("[pain-hunter] Embedding error:", e);
-    }
+      const { data: clientId } = await supabase.rpc('get_decrypted_secret', { secret_name: 'REDDIT_CLIENT_ID' });
+      const { data: clientSecret } = await supabase.rpc('get_decrypted_secret', { secret_name: 'REDDIT_SECRET' });
 
-    // 2. Buscar no Cache com Similaridade > 0.95
-    if (nicheEmbedding.length > 0) {
-      const { data: cacheData, error: cacheErr } = await supabase.rpc('match_semantic_cache', {
-        query_embedding: nicheEmbedding,
-        match_threshold: 0.95,
-        match_count: 1
-      });
-
-      if (!cacheErr && cacheData && cacheData.length > 0) {
-        console.log(`[pain-hunter] ROI HIT: Cache semântico encontrado com similaridade ${cacheData[0].similarity}`);
-        const cachedProblems = cacheData[0].cached_response.problems || [];
+      if (clientId && clientSecret) {
+        console.log("[pain-hunter] Real Reddit scraping initiated...");
+        const auth = btoa(`${clientId}:${clientSecret}`);
+        const tokenRes = await fetch("https://www.reddit.com/api/v1/access_token", {
+          method: "POST",
+          headers: { "Authorization": `Basic ${auth}`, "Content-Type": "application/x-www-form-urlencoded" },
+          body: "grant_type=client_credentials"
+        });
         
-        // Simular inserção (ou apenas retornar do cache)
-        // Para manter consistência, vamos inserir no DB de detected_problems
-        const rows = cachedProblems.map((p: any) => ({
-          user_id: userId,
-          problem_title: p.problem_title,
-          problem_description: p.problem_description,
-          source_platform: p.source_platform || "Semantic Cache",
-          niche_category: niche,
-          frequency_score: p.frequency_score * 10,
-          urgency_score: p.urgency_score * 10,
-          viral_score: (p.frequency_score * 10) + (p.urgency_score * 10),
-          pipeline_status: "pending",
-        }));
-
-        const { data: inserted, error: insErr } = await supabase.from("detected_problems").insert(rows).select();
-        
-        if (!insErr) {
-          return new Response(JSON.stringify({
-            success: true,
-            cached: true,
-            inserted: inserted?.length || 0,
-            problems: inserted,
-          }), {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" }
+        if (tokenRes.ok) {
+          const { access_token } = await tokenRes.json();
+          const searchRes = await fetch(`https://oauth.reddit.com/r/all/search?q=${encodeURIComponent(niche + " problem OR frustration OR hate")}&sort=relevance&limit=10`, {
+            headers: { "Authorization": `Bearer ${access_token}`, "User-Agent": "GenesisAI/1.0" }
           });
+          
+          if (searchRes.ok) {
+            const searchData = await searchRes.ok ? await searchRes.json() : { data: { children: [] } };
+            redditContext = searchData.data?.children?.map((c: any) => `- ${c.data.title}: ${c.data.selftext?.substring(0, 100)}...`).join("\n") || "";
+          }
         }
       }
+    } catch (e) {
+      console.error("[pain-hunter] Reddit Scraping failed, falling back to AI intuition:", e);
     }
 
-    // ── FONTE 1: Hacker News (com timeout de 8s) ─────────────────────────
-    let hnPains: any[] = [];
-    try {
-      const hnRes = await fetchWithTimeout("https://hacker-news.firebaseio.com/v0/askstories.json", {}, 8000);
-      const storyIds: number[] = (await hnRes.json()).slice(0, 15);
-      console.log(`[pain-hunter] HN: ${storyIds.length} stories to fetch`);
-
-      const hnStories = await Promise.allSettled(
-        storyIds.map(id =>
-          fetchWithTimeout(`https://hacker-news.firebaseio.com/v0/item/${id}.json`, {}, 4000)
-            .then(r => r.json())
-        )
-      );
-
-      const PAIN_WORDS = ["alternative", "broken", "hate", "frustrat", "doesn't work", "missing feature", "how do I", "problem with"];
-      hnPains = hnStories
-        .filter(r => r.status === "fulfilled")
-        .map((r: any) => r.value)
-        .filter(s => s?.title && PAIN_WORDS.some(w => s.title.toLowerCase().includes(w)));
-    } catch (err) {
-      console.error("[pain-hunter] HN error (non-fatal)");
-    }
-
-    // ── FONTE 2: Reddit Simulado ──────────────────────────────────────────
-    const redditPosts = [
-      { title: `Problemas reais de ${niche}: falta de automação end-to-end` },
-      { title: `Dores latentes em ${niche}: custo de inferência incontrolável` },
-      { title: `Gargalos de integração em ${niche}: context drift em multi-agent` },
-    ];
-
-    // ── FONTE 3: Gemini API ───────────────────────────────────────────────
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-
-    const contextTitles = [...hnPains, ...redditPosts].map(p => p.title).slice(0, 10).join("\n- ");
-    console.log(`[pain-hunter] Context titles count: ${[...hnPains, ...redditPosts].length}`);
-
-    // Prompt sem comentários
-    const promptText = `Você é um Caçador de Oportunidades de ELITE especializado em SaaS B2B.
-Analise estes títulos reais de comunidades técnicas:
-- ${contextTitles}
-
-Nicho: ${niche}
-
-Gere exatamente 15 problemas de ALTA DENSIDADE TÉCNICA em português (Brasil).
-FOCO:
-1. Escala de Squads de IA (Orquestração, Latência, Conflitos entre agentes)
-2. Custos de Inferência (Otimização, Modelos locais)
-3. Gargalos de Integração (Context drift, CLI workflows)
-
-Retorne APENAS JSON válido, sem markdown:
-{
-  "problems": [
-    {
-      "problem_title": "Título técnico",
-      "problem_description": "Descrição detalhada",
-      "source_platform": "Reddit",
-      "frequency_score": 8,
-      "urgency_score": 9
-    }
-  ]
-}`;
-
-    const payload = {
-      contents: [{ parts: [{ text: promptText }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.7,
-        maxOutputTokens: 8192,
-      }
+    // ── 6. Call Gemini Proxy ──────────────────────────────────────────────
+    const system_instruction = {
+      parts: [{
+        text: `Você é um Analista de Mercado de Elite. Sua missão é identificar dores ocultas, frustrações reais e problemas técnicos em nichos específicos. 
+Seja específico, técnico e use dados reais se fornecidos. 
+Sempre responda em JSON puro seguindo a estrutura solicitada. 
+Use Português (Brasil).`
+      }]
     };
 
-    console.log("[pain-hunter] Calling Gemini API...");
-    const aiResponse = await fetchWithTimeout(endpoint, {
+    const prompt = `Analise o nicho: "${niche}"
+
+Contexto Real do Reddit:
+${redditContext || "Nenhum dado externo disponível. Use sua intuição de mercado."}
+
+Gere uma lista de 6-8 problemas detectados.
+Para cada problema, retorne:
+- problem_title: Título curto e impactante
+- problem_description: Descrição detalhada da dor
+- source_platform: "Reddit", "HackerNews" ou "Enquete"
+- impact_level: "High", "Medium" ou "Low"
+- timing_status: "Emergente", "Estagnado" ou "Crônico"
+- frequency_score: 1-10
+- urgency_score: 1-10
+- complaint_examples: Array de 2-3 frases simulando o que os usuários dizem
+- related_tools: Array de ferramentas que falham em resolver isso`;
+
+    const proxyRes = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }, 55000); // 55s timeout (Edge Function limite é 60s)
+      headers: { "Authorization": authHeader, "Content-Type": "application/json", "x-execution-id": executionId },
+      body: JSON.stringify({
+        prompt,
+        system_instruction,
+        generationConfig: { responseMimeType: "application/json" },
+      }),
+    });
 
-    console.log(`[pain-hunter] Gemini status: ${aiResponse.status}`);
+    if (!proxyRes.ok) throw new Error("Erro ao chamar o proxy da IA");
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text().catch(() => "Erro ilegível");
-      console.error(`[pain-hunter] Gemini API error ${aiResponse.status}:`, errText);
+    const proxyData = await proxyRes.json();
+    const result = JSON.parse(proxyData.candidates?.[0]?.content?.parts?.[0]?.text);
+    const problemsList = result.problems || result || [];
 
-      let parsedError: any = {};
-      try { parsedError = JSON.parse(errText); } catch (_) { /* skip */ }
-      const detailMsg = parsedError.error?.message || errText.substring(0, 200);
-
-      return new Response(JSON.stringify({
-        error: `Gemini ${aiResponse.status}: ${detailMsg}`,
-        details: parsedError
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const aiData = await aiResponse.json();
-    console.log("[pain-hunter] Gemini raw keys:", Object.keys(aiData));
-
-    // Extrai o texto — funciona com e sem responseMimeType: "application/json"
-    const rawText = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    console.log(`[pain-hunter] Raw text present: ${!!rawText} | preview: ${rawText?.substring(0, 100)}`);
-
-    if (!rawText) {
-      const finishReason = aiData.candidates?.[0]?.finishReason;
-      console.error("[pain-hunter] Empty response. finishReason:", finishReason);
-      console.error("[pain-hunter] Full aiData:", JSON.stringify(aiData).substring(0, 500));
-      return new Response(JSON.stringify({
-        error: `Gemini não retornou conteúdo. finishReason: ${finishReason || "desconhecido"}`,
-        rawResponse: aiData
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Parse robusto — tenta JSON direto, depois limpa markdown se necessário
-    let parsed: any;
-    try {
-      parsed = JSON.parse(rawText);
-    } catch (_) {
-      // Tenta remover blocos markdown e tentar novamente
-      const cleaned = rawText.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-      try {
-        parsed = JSON.parse(cleaned);
-      } catch (parseErr) {
-        console.error("[pain-hunter] JSON parse failed. Raw text:", rawText.substring(0, 500));
-        return new Response(JSON.stringify({
-          error: "Falha ao parsear JSON do Gemini",
-          rawText: rawText.substring(0, 500)
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
-
-    const generatedProblems: any[] = parsed.problems || [];
-    console.log(`[pain-hunter] Problems parsed: ${generatedProblems.length}`);
-
-    if (generatedProblems.length === 0) {
-      return new Response(JSON.stringify({
-        error: "Gemini retornou lista de problemas vazia.",
-        parsed
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const rows = generatedProblems.map((p) => {
-      const freq = Math.min(10, Math.max(1, Number(p.frequency_score) || 5)) * 10;
-      const urg = Math.min(10, Math.max(1, Number(p.urgency_score) || 7)) * 10;
+    // ── 7. Save to DB (Table: detected_problems) ────────────────────────
+    const rows = problemsList.map((p: any) => {
+      const freq = Math.min(100, Math.max(0, (Number(p.frequency_score) || 5) * 10));
+      const urg = Math.min(100, Math.max(0, (Number(p.urgency_score) || 5) * 10));
       return {
-        user_id: userId,
-        problem_title: (p.problem_title || "Sem título").trim(),
-        problem_description: p.problem_description?.trim() ?? null,
-        source_platform: p.source_platform?.trim() ?? "Gemini AI",
+        user_id: user.id,
+        problem_title: p.problem_title,
+        problem_description: p.problem_description,
+        source_platform: p.source_platform,
         niche_category: niche,
+        impact_level: p.impact_level || "Medium",
+        timing_status: p.timing_status || "Emergente",
         frequency_score: freq,
         urgency_score: urg,
-        viral_score: Math.min(200, freq + urg),
-        pipeline_status: "pending",
+        viral_score: freq + urg,
+        complaint_examples: p.complaint_examples || [],
+        related_tools: p.related_tools || [],
+        pipeline_status: 'pending'
       };
     });
 
-    console.log(`[pain-hunter] Inserting ${rows.length} rows for user ${userId}`);
-
-    const { data, error: dbError } = await supabase
-      .from("detected_problems")
-      .insert(rows)
-      .select();
+    const { data: inserted, error: dbError } = await supabase.from("detected_problems").insert(rows).select();
 
     if (dbError) {
-      console.error("[pain-hunter] DB INSERT error:", JSON.stringify(dbError));
-      return new Response(JSON.stringify({
-        error: "Erro ao salvar no banco",
-        code: dbError.code,
-        message: dbError.message,
-      }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error("Erro ao salvar problemas detectados:", dbError);
+      throw dbError;
     }
 
-    console.log(`[pain-hunter] SUCCESS | inserted: ${data?.length ?? 0}`);
+    // ── 8. Log Final & Cache ─────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STATE_DELTA",
+      detail: `Sucesso: Identificadas ${rows.length} dores latentes no nicho ${niche}.`,
+      user_id: user.id,
+      level: "info",
+    });
 
-    // 🔥 MARRETADA 1 (FINAL): Salvar no Cache Semântico
-    if (nicheEmbedding && nicheEmbedding.length > 0) {
-      supabase.from("ai_semantic_cache").insert({
-        user_id: userId,
-        niche_label: niche,
-        query_text: niche,
-        query_embedding: nicheEmbedding,
-        cached_response: { problems: generatedProblems }
-      }).then(() => console.log("[pain-hunter] ROI CACHED: Novo nicho salvo no cache semântico."))
-        .catch(e => console.error("Erro salvar cache:", e));
-    }
+    await supabase.from("pipeline_cache").insert({
+      execution_id: executionId,
+      status: "completed",
+      tools: inserted, // Salvando problemas detectados no campo 'tools' para compatibilidade de visualização rápida
+    });
 
-    return new Response(JSON.stringify({
-      success: true,
-      inserted: data?.length || 0,
-      problems: data,
-    }), {
+    // ── 9. Return Response ──────────────────────────────────────────────
+    return new Response(JSON.stringify({ success: true, problems: inserted }), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" }
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (err: any) {
-    console.error("[pain-hunter] UNHANDLED ERROR:", err.message, err.stack);
-    return new Response(JSON.stringify({
-      error: "Erro inesperado na Edge Function",
-      message: err.message,
-    }), {
-      status: 200,
+    console.error("pain-hunter error:", err);
+    return new Response(JSON.stringify({ error: err.message || "Erro interno" }), {
+      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

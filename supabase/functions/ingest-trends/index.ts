@@ -1,10 +1,9 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-execution-id",
 };
 
 const DATA_SOURCES = [
@@ -16,202 +15,155 @@ const DATA_SOURCES = [
   { name: "Reddit r/SaaS", type: "community_signals", description: "SaaS community pain points and discussions" },
 ];
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
+    // ── 1. Auth & Essentials ──────────────────────────────────────────────
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    // Determine user_id: from auth header (manual trigger) or from body (cron)
-    let userId: string | null = null;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     const authHeader = req.headers.get("Authorization");
+    let user_id: string | null = null;
+
     if (authHeader?.startsWith("Bearer ")) {
-      const anonKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
-      const userClient = createClient(SUPABASE_URL, anonKey!, {
-        global: { headers: { Authorization: authHeader } },
-      });
       const token = authHeader.replace("Bearer ", "");
-      const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-      if (!claimsErr && claimsData?.claims?.sub) {
-        userId = claimsData.claims.sub as string;
+      if (token === SERVICE_ROLE_KEY) {
+        console.log("[ingest-trends] Autenticação via SERVICE_ROLE (Cron/Sistema)");
+      } else {
+        const { data: { user } } = await supabase.auth.getUser(token);
+        user_id = user?.id || null;
       }
     }
 
-    // Try body for user_id (cron or direct call)
-    if (!userId) {
-      try {
-        const body = await req.json();
-        userId = body?.user_id || null;
-      } catch { /* no body */ }
-    }
+    const body = await req.json().catch(() => ({}));
+    
+    // ── 2. EXECUTION_ID (Idempotência) ──────────────────────────────────────
+    const executionId = req.headers.get("x-execution-id") ?? crypto.randomUUID();
 
-    // If no user, fetch all users who have profiles
-    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // ── 3. Cache Check ────────────────────────────────────────────────────
+    const { data: cached } = await supabase
+      .from("pipeline_cache")
+      .select("*")
+      .eq("execution_id", executionId)
+      .eq("status", "completed")
+      .maybeSingle();
 
-    let userIds: string[] = [];
-    if (userId) {
-      userIds = [userId];
-    } else {
-      const { data: profiles } = await adminClient.from("profiles").select("user_id");
-      userIds = (profiles || []).map((p: any) => p.user_id);
-    }
-
-    if (userIds.length === 0) {
-      return new Response(JSON.stringify({ message: "No users to process" }), {
+    if (cached) {
+      console.log(`Cache hit para ingest-trends: ${executionId}`);
+      return new Response(JSON.stringify({ success: true, cached: true, trends: cached.tools }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Use AI to generate realistic trend data from simulated sources
-    const sourceNames = DATA_SOURCES.map((s) => `${s.name} (${s.description})`).join("\n- ");
+    // ── 4. AG-UI Start Event ──────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "RUN_STARTED",
+      detail: `Iniciando coleta de tendências de mercado global. Fontes: ${DATA_SOURCES.length}`,
+      user_id: user_id,
+      level: "info",
+    });
 
-    // ── FONTE REAL: NewsAPI ──────────────────
-    const NEWS_API_KEY = Deno.env.get("NEWS_API_KEY");
-    let newsArticles: any[] = [];
-
-    if (NEWS_API_KEY) {
-      try {
-        const today = new Date();
-        const lastWeek = new Date(today);
-        lastWeek.setDate(today.getDate() - 7);
-        const fromDate = lastWeek.toISOString().split('T')[0];
-        const toDate = today.toISOString().split('T')[0];
-
-        // 1. Latest articles about specific topics
-        const query1 = encodeURIComponent(`"SaaS" OR "artificial intelligence tools" OR "startup funding" OR "no-code automation"`);
-        const newsRes1 = await fetch(`https://newsapi.org/v2/everything?q=${query1}&sortBy=publishedAt&pageSize=10&language=en`, {
-          headers: { "X-Api-Key": NEWS_API_KEY }
+    // ── 5. NewsAPI Context (Vault Access) ─────────────────────────────────
+    let newsContext = "";
+    try {
+      const { data: newsKey } = await supabase.rpc('get_decrypted_secret', { secret_name: 'NEWS_API_KEY' });
+      if (newsKey) {
+        const newsRes = await fetch(`https://newsapi.org/v2/everything?q="SaaS" OR "AI startup"&sortBy=popularity&pageSize=10&language=en`, {
+          headers: { "X-Api-Key": newsKey }
         });
-
-        // 2. Popular articles from the last 7 days
-        const newsRes2 = await fetch(`https://newsapi.org/v2/everything?q=${query1}&from=${fromDate}&to=${toDate}&sortBy=popularity&pageSize=10&language=en`, {
-          headers: { "X-Api-Key": NEWS_API_KEY }
-        });
-
-        const items1 = newsRes1.ok ? (await newsRes1.json()).articles || [] : [];
-        const items2 = newsRes2.ok ? (await newsRes2.json()).articles || [] : [];
-
-        newsArticles = [...items1, ...items2].map((a: any) => ({
-          title: a.title,
-          description: a.description,
-          source: a.source?.name || "News"
-        }));
-
-        // Remove duplicates by title
-        newsArticles = newsArticles.filter((article, index, self) =>
-          article.title && index === self.findIndex((t) => t.title === article.title)
-        ).slice(0, 15);
-
-      } catch (err) {
-        console.error("NewsAPI error:", err);
+        if (newsRes.ok) {
+          const newsData = await newsRes.json();
+          newsContext = newsData.articles?.map((a: any) => `- [${a.source?.name}] ${a.title}`).join("\n") || "";
+        }
       }
+    } catch (e) {
+      console.error("[ingest-trends] NewsAPI failed, proceeding with standard data:", e);
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // ── 6. Call Gemini Proxy ──────────────────────────────────────────────
+    const system_instruction = {
+      parts: [{
+        text: `Você é uma IA de inteligência de mercado especializada em detectar tendências emergentes de tecnologia. 
+Sempre responda em JSON puro. Use Português (Brasil).`
+      }]
+    };
+
+    const prompt = `Analise as seguintes fontes de dados simuladas:
+${DATA_SOURCES.map(s => `- ${s.name}: ${s.description}`).join("\n")}
+
+Contexto de Notícias Reais:
+${newsContext || "Não disponível."}
+
+Gere uma lista de 6 tendências tecnológicas emergentes DETECTADAS HOJE.
+Para cada tendência, retorne:
+- name: Nome curto da tendência
+- category: Categoria (AI, SaaS, Fintech, etc.)
+- growth_score: Score de crescimento 1-100
+- source: Fonte que detectou isso (Ex: Product Hunt, Google Trends)
+
+Retorne no formato JSON { "trends": [...] }`;
+
+    const proxyRes = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Authorization": authHeader || `Bearer ${SERVICE_ROLE_KEY}`, "Content-Type": "application/json", "x-execution-id": executionId },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a market intelligence system that aggregates data from multiple sources to detect emerging technology and SaaS trends. Return realistic, current-sounding trends.",
-          },
-          {
-            role: "user",
-            content: `You have just scanned these data sources:\n- ${sourceNames}\n\nReal News Context (NewsAPI):\n${newsArticles.length > 0 ? newsArticles.map((n: any) => `- [${n.source}] ${n.title}: ${n.description}`).join('\n') : "N/A"}\n\nGenerate 5 emerging trends detected today. Each trend should feel like real market intelligence from these sources. Include a mix of categories: AI, SaaS, DevTools, Fintech, Healthcare, EdTech, Creator Economy, E-commerce.`,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_trends",
-              description: "Return detected trends from data sources",
-              parameters: {
-                type: "object",
-                properties: {
-                  trends: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        name: { type: "string", description: "Short trend name" },
-                        category: { type: "string", description: "Category like AI, SaaS, DevTools, etc." },
-                        growth_score: { type: "number", description: "Growth score 1-100" },
-                        source: { type: "string", description: "Which data source detected this" },
-                      },
-                      required: ["name", "category", "growth_score", "source"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["trends"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "return_trends" } },
+        prompt,
+        system_instruction,
+        generationConfig: { responseMimeType: "application/json" },
       }),
     });
 
-    if (!response.ok) {
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      if (response.status === 429 || response.status === 402) {
-        return new Response(JSON.stringify({ error: response.status === 429 ? "Rate limited" : "Credits exhausted" }), {
-          status: response.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error("AI gateway error");
-    }
+    if (!proxyRes.ok) throw new Error("Erro ao chamar o proxy da IA");
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call in AI response");
+    const proxyData = await proxyRes.json();
+    const result = JSON.parse(proxyData.candidates?.[0]?.content?.parts?.[0]?.text);
+    const trendsList = result.trends || [];
 
-    const parsed = JSON.parse(toolCall.function.arguments);
-    const trends = parsed.trends || [];
-
-    // Insert trends for each user
-    let totalInserted = 0;
-    for (const uid of userIds) {
-      const rows = trends.map((t: any) => ({
-        name: t.name,
-        category: t.category,
-        growth_score: Math.min(100, Math.max(1, Math.round(t.growth_score))),
-        source: t.source,
-        user_id: uid,
+    // ── 7. Save to DB (Table: trends) ────────────────────────────────────
+    if (trendsList.length > 0 && user_id) {
+      const rows = trendsList.map((t: any) => ({
+        user_id: user_id,
+        name: t.name || "Tendência",
+        category: t.category || "Geral",
+        growth_score: Math.min(100, Math.max(0, Number(t.growth_score) || 50)),
+        source: t.source || "IA",
       }));
 
-      const { error } = await adminClient.from("trends").insert(rows);
-      if (!error) totalInserted += rows.length;
-      else console.error("Insert error for user", uid, error);
+      const { error: trendsError } = await supabase.from("trends").insert(rows);
+      if (trendsError) console.error("Erro ao salvar trends:", trendsError);
     }
+    // Se user_id for null (cron), salva apenas no pipeline_cache e activity
 
-    return new Response(
-      JSON.stringify({
-        message: `Ingested ${totalInserted} trends for ${userIds.length} user(s)`,
-        sources: DATA_SOURCES.map((s) => s.name),
-        trends,
-        news_articles_found: newsArticles.length,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (e) {
-    console.error("ingest-trends error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    // ── 8. Log Final & Cache ─────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STATE_DELTA",
+      detail: `Sucesso: ${trendsList.length} tendências coletadas e catalogadas.`,
+      user_id: user_id,
+      level: "info",
+    });
+
+    await supabase.from("pipeline_cache").insert({
+      execution_id: executionId,
+      status: "completed",
+      tools: trendsList, // Salvando tendências no campo 'tools' para compatibilidade
+    });
+
+    // ── 9. Return Response ──────────────────────────────────────────────
+    return new Response(JSON.stringify({ success: true, trends: trendsList }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  } catch (err: any) {
+    console.error("ingest-trends error:", err);
+    return new Response(JSON.stringify({ error: err.message || "Erro interno" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

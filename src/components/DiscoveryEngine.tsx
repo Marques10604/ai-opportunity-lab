@@ -35,7 +35,11 @@ export function DiscoveryEngine({ open, onClose }: { open: boolean; onClose: () 
     }
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const { data: funcData, error: funcError } = await supabase.functions.invoke("generate-opportunities", {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
         body: {
           niches: ["Ferramentas para Dev", "EdTech", "Saúde", "Economia Criativa", "E-commerce"],
           trends: ["Automação com IA", "Ferramentas para trabalho remoto", "Plataformas no-code", "Produtos API-first"],

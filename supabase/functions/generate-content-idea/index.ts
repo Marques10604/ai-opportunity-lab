@@ -1,153 +1,148 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-execution-id",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { problem_title, problem_description } = await req.json();
+    // ── 1. Auth & Essentials ──────────────────────────────────────────────
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Não autenticado");
 
-    if (!problem_title) {
-      return new Response(JSON.stringify({ error: "problem_title é obrigatório" }), {
-        status: 400,
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) throw new Error("Sessão inválida");
+
+    const body = await req.json().catch(() => ({}));
+    const { problem_id, problem_title, problem_description } = body;
+
+    if (!problem_title) throw new Error("problem_title é obrigatório");
+
+    // ── 2. EXECUTION_ID (Idempotência) ──────────────────────────────────────
+    const executionId = req.headers.get("x-execution-id") ?? crypto.randomUUID();
+
+    // ── 3. Cache Check ────────────────────────────────────────────────────
+    const { data: cached } = await supabase
+      .from("pipeline_cache")
+      .select("*")
+      .eq("execution_id", executionId)
+      .eq("status", "completed")
+      .maybeSingle();
+
+    if (cached) {
+      console.log(`Cache hit para generate-content-idea: ${executionId}`);
+      return new Response(JSON.stringify({ success: true, cached: true, ...cached }), {
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY não configurada" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // ── 4. AG-UI Start Event ──────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "RUN_STARTED",
+      detail: `Gerando estratégia de conteúdo para: ${problem_title}`,
+      user_id: user.id,
+      level: "info",
+    });
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // ── 5. Call Gemini Proxy ──────────────────────────────────────────────
+    const system_instruction = {
+      parts: [{
+        text: `Você é um estrategista de conteúdo para redes sociais (TikTok, Instagram, Reels). 
+Sua missão é criar ideias de conteúdo virais baseadas em problemas reais de usuários. 
+Sempre responda em JSON puro usando a estrutura solicitada. 
+Use Português (Brasil).`
+      }]
+    };
+
+    const prompt = `Gere uma estratégia de conteúdo baseada neste problema:
+Título: ${problem_title}
+Descrição: ${problem_description || "N/A"}
+
+O conteúdo deve abordar a dor e atrair o público que sofre com isso.
+Retorne um JSON com:
+- content_title: Título chamativo
+- content_hook: Hook de abertura (1-2 frases)
+- content_type: "vídeo curto", "carrossel" ou "thread"
+- video_script: { hook, problem, insight, cta }
+- carousel: { carousel_title, slide_1_hook, slide_2_problem, slide_3_explanation, slide_4_tip_or_solution, slide_5_call_to_action }`;
+
+    const proxyRes = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Authorization": authHeader,
         "Content-Type": "application/json",
+        "x-execution-id": executionId,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a social media content strategist. Generate creative, engaging content ideas based on user problems. Always respond in Portuguese (Brazil). Always use the provided tool to return structured data.",
-          },
-          {
-            role: "user",
-            content: `Generate a social media content idea based on this user problem:\n\nTitle: ${problem_title}\nDescription: ${problem_description || "N/A"}\n\nThe content should address this pain point and attract an audience that has this problem.\n\nGenerate BOTH:\n1. A video_script with: Hook (3s), Problem, Insight, CTA\n2. A carousel structure with 5 slides: Hook slide, Problem slide, Explanation slide, Tip/Solution slide, CTA slide\n\nUse Portuguese (Brazil) for all text.`,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_content_idea",
-              description: "Return a structured social media content idea with video script and carousel.",
-              parameters: {
-                type: "object",
-                properties: {
-                  content_title: {
-                    type: "string",
-                    description: "Catchy title for the content piece",
-                  },
-                  content_hook: {
-                    type: "string",
-                    description: "Opening hook to grab attention (1-2 sentences)",
-                  },
-                  content_type: {
-                    type: "string",
-                    enum: ["vídeo curto", "carrossel", "thread"],
-                    description: "Format of the content",
-                  },
-                  video_script: {
-                    type: "object",
-                    description: "Structured video script for short-form content",
-                    properties: {
-                      hook: { type: "string", description: "First 3 seconds hook" },
-                      problem: { type: "string", description: "Brief problem explanation" },
-                      insight: { type: "string", description: "Quick solution or tip" },
-                      cta: { type: "string", description: "Call to action" },
-                    },
-                    required: ["hook", "problem", "insight", "cta"],
-                    additionalProperties: false,
-                  },
-                  carousel: {
-                    type: "object",
-                    description: "Instagram carousel structure with 5 slides",
-                    properties: {
-                      carousel_title: { type: "string", description: "Main title for the carousel" },
-                      slide_1_hook: { type: "string", description: "Slide 1: Attention-grabbing hook" },
-                      slide_2_problem: { type: "string", description: "Slide 2: Describe the problem" },
-                      slide_3_explanation: { type: "string", description: "Slide 3: Deeper explanation or context" },
-                      slide_4_tip_or_solution: { type: "string", description: "Slide 4: Tip or solution" },
-                      slide_5_call_to_action: { type: "string", description: "Slide 5: CTA to engage" },
-                    },
-                    required: ["carousel_title", "slide_1_hook", "slide_2_problem", "slide_3_explanation", "slide_4_tip_or_solution", "slide_5_call_to_action"],
-                    additionalProperties: false,
-                  },
-                },
-                required: ["content_title", "content_hook", "content_type", "video_script", "carousel"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "return_content_idea" } },
+        prompt,
+        system_instruction,
+        generationConfig: { responseMimeType: "application/json" },
       }),
     });
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errText);
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em instantes." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos ao workspace." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify({ error: "Erro ao gerar ideia de conteúdo" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (!proxyRes.ok) throw new Error("Erro ao chamar gemini-proxy");
+
+    const proxyData = await proxyRes.json();
+    const aiText = proxyData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!aiText) throw new Error("IA não retornou conteúdo");
+
+    const result = JSON.parse(aiText);
+
+    // ── 6. Save to DB (Table: content_opportunities) ─────────────────────
+    const { error: insertError } = await supabase
+      .from("content_opportunities")
+      .insert({
+        user_id: user.id,
+        source_problem_id: problem_id || null,
+        titulo_conteudo: result.content_title,
+        gancho: result.content_hook,
+        tipo_conteudo: result.content_type,
+        roteiro_curto: JSON.stringify(result.video_script),
+        slides_carrossel: result.carousel ? [result.carousel] : [],
+        pontuacao_viral: 0,
       });
-    }
 
-    const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (insertError) console.error("Error inserting content opportunity:", insertError);
 
-    if (!toolCall?.function?.arguments) {
-      console.error("No tool call in AI response:", JSON.stringify(aiData));
-      return new Response(JSON.stringify({ error: "IA não retornou dados estruturados" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // ── 7. Log Final & Cache ─────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STATE_DELTA",
+      detail: `Sucesso: Ideia de conteúdo "${result.content_title}" gerada e salva.`,
+      user_id: user.id,
+      level: "info",
+    });
 
-    const contentIdea = JSON.parse(toolCall.function.arguments);
+    // Salva no pipeline_cache com status 'completed' e campo content_ideas
+    await supabase.from("pipeline_cache").insert({
+      execution_id: executionId,
+      detected_problem_id: problem_id || null,
+      status: "completed",
+      content_ideas: result,
+    });
 
-    return new Response(JSON.stringify({ success: true, content_idea: contentIdea }), {
+    // ── 8. Return Response ──────────────────────────────────────────────
+    return new Response(JSON.stringify({ success: true, content_idea: result }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (err) {
-    console.error("Erro inesperado:", err);
-    return new Response(JSON.stringify({ error: "Erro interno do servidor" }), {
+
+  } catch (err: any) {
+    console.error("generate-content-idea error:", err);
+    return new Response(JSON.stringify({ error: err.message || "Erro interno" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

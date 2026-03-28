@@ -1,172 +1,160 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-execution-id",
 };
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    // ── 1. Auth & Essentials ──────────────────────────────────────────────
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Não autenticado");
 
-    const { title, niche, problem, solution, competition_level, market_score } = await req.json();
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) throw new Error("Sessão inválida");
+
+    const body = await req.json().catch(() => ({}));
+    const { 
+      opportunity_id, // ID da oportunidade vinculada
+      title, 
+      niche, 
+      problem, 
+      solution, 
+      competition_level, 
+      market_score 
+    } = body;
+
+    if (!title) throw new Error("Título do produto é obrigatório");
+
+    // ── 2. EXECUTION_ID (Idempotência) ──────────────────────────────────────
+    const executionId = req.headers.get("x-execution-id") ?? crypto.randomUUID();
+
+    // ── 3. Cache Check ────────────────────────────────────────────────────
+    const { data: cached } = await supabase
+      .from("pipeline_cache")
+      .select("*")
+      .eq("execution_id", executionId)
+      .eq("status", "completed")
+      .maybeSingle();
+
+    if (cached) {
+      console.log(`Cache hit para generate-blueprint: ${executionId}`);
+      // No cache, o blueprint está no campo 'opportunity'
+      return new Response(JSON.stringify({ success: true, cached: true, ...cached.opportunity }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── 4. AG-UI Start Event ──────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "RUN_STARTED",
+      detail: `Gerando Blueprint Técnico para: ${title}`,
+      user_id: user.id,
+      level: "info",
+    });
+
+    // ── 5. Call Gemini Proxy ──────────────────────────────────────────────
+    const system_instruction = {
+      parts: [{
+        text: `Você é um arquiteto de software sênior e estrategista de produtos. 
+Sua missão é criar Blueprints de desenvolvimento detalhados para MVPs de SaaS. 
+Seja específico com nomes de tabelas, tipos de colunas e endpoints. 
+Sempre responda em JSON puro usando a estrutura solicitada. 
+Use Português (Brasil).`
+      }]
+    };
+
+    const prompt = `Crie um blueprint completo de desenvolvimento para este produto SaaS:
+
+Produto: ${title}
+Nicho: ${niche}
+Problema: ${problem}
+Solução: ${solution}
+Competição: ${competition_level}
+Score de Mercado: ${market_score}/100
+
+Retorne um JSON estruturado com:
+- product_spec: Descrição detalhada da visão e valor
+- core_features: Array de { name, description, priority (P0, P1, P2) }
+- ui_structure: Array de { page, purpose, components (array) }
+- database_schema: Array de { table_name, purpose, columns (array de { name, type, nullable }) }
+- api_endpoints: Array de { method, path, description, request_body, response }
+- architecture_notes: Array de strings com recomendações técnicas`;
+
+    const proxyRes = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Authorization": authHeader, "Content-Type": "application/json", "x-execution-id": executionId },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are a senior software architect and product strategist. You create detailed, production-ready development blueprints for SaaS MVPs. Be specific with table names, column types, endpoint paths, and HTTP methods. Return data via the provided tool.`,
-          },
-          {
-            role: "user",
-            content: `Create a complete development blueprint for this SaaS product:
-
-**Product:** ${title}
-**Niche:** ${niche}
-**Problem:** ${problem}
-**Solution:** ${solution}
-**Competition:** ${competition_level}
-**Market Score:** ${market_score}/100
-
-Generate a full blueprint with:
-1. product_spec: A detailed product specification (3-4 sentences covering vision, target user, and value prop)
-2. core_features: 8 features with name, description, and priority (P0=must-have, P1=important, P2=nice-to-have)
-3. ui_structure: 6-8 screens/pages with page name, purpose, and list of key components on each
-4. database_schema: 5-7 database tables with table name, purpose, and list of columns (name, type, and whether nullable)
-5. api_endpoints: 8-10 REST API endpoints with method, path, description, and request/response summary
-6. architecture_notes: 3 key architecture decisions or patterns to follow`,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_blueprint",
-              description: "Return the full development blueprint",
-              parameters: {
-                type: "object",
-                properties: {
-                  product_spec: { type: "string" },
-                  core_features: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        name: { type: "string" },
-                        description: { type: "string" },
-                        priority: { type: "string", enum: ["P0", "P1", "P2"] },
-                      },
-                      required: ["name", "description", "priority"],
-                      additionalProperties: false,
-                    },
-                  },
-                  ui_structure: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        page: { type: "string" },
-                        purpose: { type: "string" },
-                        components: { type: "array", items: { type: "string" } },
-                      },
-                      required: ["page", "purpose", "components"],
-                      additionalProperties: false,
-                    },
-                  },
-                  database_schema: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        table_name: { type: "string" },
-                        purpose: { type: "string" },
-                        columns: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              name: { type: "string" },
-                              type: { type: "string" },
-                              nullable: { type: "boolean" },
-                            },
-                            required: ["name", "type", "nullable"],
-                            additionalProperties: false,
-                          },
-                        },
-                      },
-                      required: ["table_name", "purpose", "columns"],
-                      additionalProperties: false,
-                    },
-                  },
-                  api_endpoints: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        method: { type: "string", enum: ["GET", "POST", "PUT", "PATCH", "DELETE"] },
-                        path: { type: "string" },
-                        description: { type: "string" },
-                        request_body: { type: "string" },
-                        response: { type: "string" },
-                      },
-                      required: ["method", "path", "description", "request_body", "response"],
-                      additionalProperties: false,
-                    },
-                  },
-                  architecture_notes: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                },
-                required: ["product_spec", "core_features", "ui_structure", "database_schema", "api_endpoints", "architecture_notes"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "return_blueprint" } },
+        prompt,
+        system_instruction,
+        generationConfig: { responseMimeType: "application/json" },
       }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      throw new Error("AI gateway error");
-    }
+    if (!proxyRes.ok) throw new Error("Erro ao chamar o proxy da IA");
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call in response");
+    const proxyData = await proxyRes.json();
+    const aiText = proxyData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!aiText) throw new Error("IA não retornou conteúdo");
 
-    const parsed = JSON.parse(toolCall.function.arguments);
-    return new Response(JSON.stringify(parsed), {
+    const result = JSON.parse(aiText);
+
+    // ── 6. Save to DB (Table: blueprints) ────────────────────────────────
+    const { error: insertError } = await supabase
+      .from("blueprints")
+      .insert({
+        user_id: user.id,
+        opportunity_id: opportunity_id || null, // FK para a oportunidade
+        specification: result.product_spec,
+        features: result.core_features,
+        ui_structure: result.ui_structure,
+        database_schema: result.database_schema,
+        api_endpoints: result.api_endpoints,
+        architecture_notes: result.architecture_notes,
+      });
+
+    if (insertError) console.error("Error inserting blueprint:", insertError);
+
+    // ── 7. Log Final & Cache ─────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STATE_DELTA",
+      detail: `Sucesso: Blueprint arquitetural para "${title}" finalizado e salvo.`,
+      user_id: user.id,
+      level: "info",
+    });
+
+    // Salva no pipeline_cache com status 'completed' e campo opportunity
+    await supabase.from("pipeline_cache").insert({
+      execution_id: executionId,
+      status: "completed",
+      opportunity: result, // Blueprint vai no campo opportunity por padrão do projeto
+    });
+
+    // ── 8. Return Response ──────────────────────────────────────────────
+    return new Response(JSON.stringify({ success: true, blueprint: result }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    console.error("generate-blueprint error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+  } catch (err: any) {
+    console.error("generate-blueprint error:", err);
+    return new Response(JSON.stringify({ error: err.message || "Erro interno" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

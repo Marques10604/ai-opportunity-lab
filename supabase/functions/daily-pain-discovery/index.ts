@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-execution-id",
 };
 
 Deno.serve(async (req) => {
@@ -14,13 +14,42 @@ Deno.serve(async (req) => {
   const startTime = Date.now();
 
   try {
-    // Use service role for cron-triggered calls (bypasses RLS)
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // ── 1. Essentials & Service Role ─────────────────────────────────────
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // Get all user IDs from profiles
+    // Client com Service Role é obrigatório para o cron job
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+    // ── 2. EXECUTION_ID (Idempotência) ──────────────────────────────────────
+    const executionId = req.headers.get("x-execution-id") ?? crypto.randomUUID();
+
+    // ── 3. Cache Check ────────────────────────────────────────────────────
+    const { data: cached } = await supabase
+      .from("pipeline_cache")
+      .select("*")
+      .eq("execution_id", executionId)
+      .eq("status", "completed")
+      .maybeSingle();
+
+    if (cached) {
+      console.log(`Cache hit para cron executionId: ${executionId}`);
+      return new Response(JSON.stringify({ success: true, cached: true, data: cached }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── 4. AG-UI Start Event (user_id é null para cron) ───────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "RUN_STARTED",
+      detail: "Iniciando descoberta diária global (Cron Job)",
+      user_id: null,
+      level: "info",
+    });
+
+    // ── 5. Fetch Active Users ─────────────────────────────────────────────
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
       .select("user_id");
@@ -28,103 +57,75 @@ Deno.serve(async (req) => {
     if (profilesError) throw profilesError;
 
     if (!profiles?.length) {
-      console.log("No users found, skipping.");
-      return new Response(JSON.stringify({ success: true, message: "Nenhum usuário encontrado", inserted: 0 }), {
+      return new Response(JSON.stringify({ success: true, message: "Nenhum usuário encontrado" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Generate problems via Lovable AI
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    // ── 6. Call Gemini Proxy via Service Role ──────────────────────────────
+    const system_instruction = {
+      parts: [{
+        text: `You are a market research analyst that identifies real user pain points from online communities. 
+Always respond in JSON format. 
+Use Portuguese (Brazil) for all text fields.`
+      }]
+    };
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const prompt = `Generate 10 realistic, specific user problems people complain about online today (${new Date().toISOString().slice(0, 10)}). 
+Topics: software, productivity, automation, digital tools, online work, content creation. 
+Each problem must feel like a real complaint found on Reddit, Quora, YouTube, Twitter, or Indie Hackers. 
+Return a JSON object with a "problems" array. Each item must have:
+- problem_title
+- problem_description
+- source_platform: (one of ["Reddit", "Quora", "YouTube", "Twitter", "Indie Hackers"])
+- frequency_score: (1-10)
+- urgency_score: (1-10)`;
+
+    const proxyRes = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
         "Content-Type": "application/json",
+        "x-execution-id": executionId,
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a market research analyst that identifies real user pain points from online communities. Always respond by calling the provided tool.",
-          },
-          {
-            role: "user",
-            content: `Generate 10 realistic, specific user problems people complain about online today (${new Date().toISOString().slice(0, 10)}). Topics: software, productivity, automation, digital tools, online work, content creation. Each problem must feel like a real complaint found on Reddit, Quora, YouTube, Twitter, or Indie Hackers. Be specific, varied, and fresh — avoid repeating common generic problems. Use Portuguese (Brazil) for all text fields.`,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_problems",
-              description: "Return a list of detected user problems.",
-              parameters: {
-                type: "object",
-                properties: {
-                  problems: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        problem_title: { type: "string" },
-                        problem_description: { type: "string" },
-                        source_platform: {
-                          type: "string",
-                          enum: ["Reddit", "Quora", "YouTube", "Twitter", "Indie Hackers"],
-                        },
-                        frequency_score: { type: "integer" },
-                        urgency_score: { type: "integer" },
-                      },
-                      required: ["problem_title", "problem_description", "source_platform", "frequency_score", "urgency_score"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["problems"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "return_problems" } },
+        prompt,
+        system_instruction,
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
       }),
     });
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      throw new Error(`AI gateway error ${aiResponse.status}: ${errText}`);
+    if (!proxyRes.ok) {
+      const errorData = await proxyRes.json().catch(() => ({ error: "Erro no Proxy" }));
+      throw new Error(`Proxy error: ${errorData.error || "Erro desconhecido"}`);
     }
 
-    const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
-      throw new Error("IA não retornou dados estruturados");
+    const proxyData = await proxyRes.json();
+    const aiText = proxyData.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!aiText) throw new Error("IA não retornou conteúdo");
+
+    let parsedResult;
+    try {
+      parsedResult = JSON.parse(aiText);
+    } catch (e) {
+      console.error("Erro ao fazer parse do JSON do Gemini:", aiText);
+      throw new Error("Resposta da IA não é um JSON válido");
     }
 
-    const parsed = JSON.parse(toolCall.function.arguments);
-    const problems: any[] = parsed.problems || [];
+    const problems = parsedResult.problems || [];
+    if (problems.length === 0) throw new Error("Nenhum problema gerado pela IA");
 
-    if (problems.length === 0) {
-      throw new Error("Nenhum problema gerado pela IA");
-    }
-
-    // Insert problems for each user
+    // ── 7. Insert for each user ───────────────────────────────────────────
     let totalInserted = 0;
 
     for (const profile of profiles) {
-      const rows = problems.map((p) => {
-        const freq = typeof p.frequency_score === "number"
-          ? Math.min(100, Math.max(0, p.frequency_score * 10))
-          : 0;
-        const urg = typeof p.urgency_score === "number"
-          ? Math.min(100, Math.max(0, p.urgency_score * 10))
-          : 0;
+      const rows = problems.map((p: any) => {
+        const freq = Math.min(100, Math.max(0, (p.frequency_score || 0) * 10));
+        const urg = Math.min(100, Math.max(0, (p.urgency_score || 0) * 10));
         return {
           user_id: profile.user_id,
           problem_title: (p.problem_title || "Sem título").trim(),
@@ -147,26 +148,30 @@ Deno.serve(async (req) => {
       }
 
       totalInserted += inserted.length;
-
-      // Log execution per user
-      await supabase.from("agent_logs").insert({
-        user_id: profile.user_id,
-        agent_name: "Pain Hunter (Cron)",
-        action: "Descoberta diária de problemas",
-        detail: `${inserted.length} problemas inseridos automaticamente.`,
-        level: "info",
-      });
     }
 
-    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    // ── 8. Log Event (Global) ────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STATE_DELTA",
+      detail: `Concluído: ${totalInserted} problemas distribuídos entre ${profiles.length} usuários.`,
+      user_id: null,
+      level: "info",
+    });
 
-    console.log(`daily-pain-discovery concluído: ${totalInserted} problemas inseridos para ${profiles.length} usuário(s) em ${duration}s`);
+    // ── 9. Pipeline Cache Persistence ────────────────────────────────────
+    await supabase.from("pipeline_cache").insert({
+      execution_id: executionId,
+      status: "completed",
+      content_ideas: problems,
+    });
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
     return new Response(
       JSON.stringify({
         success: true,
-        users: profiles.length,
-        problems_generated: problems.length,
+        users_impacted: profiles.length,
         total_inserted: totalInserted,
         duration_seconds: parseFloat(duration),
       }),
@@ -175,11 +180,11 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
-  } catch (err) {
-    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.error(`daily-pain-discovery falhou após ${duration}s:`, err);
+
+  } catch (err: any) {
+    console.error("daily-pain-discovery error:", err);
     return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Erro interno" }),
+      JSON.stringify({ error: err.message || "Erro interno" }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

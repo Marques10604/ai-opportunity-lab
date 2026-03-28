@@ -1,211 +1,196 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-execution-id",
 };
 
-const PIPELINE_AGENTS = [
-  { id: "code-agent", name: "Agente de Código", role: "Implementa lógica e estruturas baseadas em oportunidades" },
-  { id: "qa-agent", name: "Agente de QA", role: "Valida código, segurança e performance" },
-  { id: "doc-agent", name: "Agente de Documentação", role: "Gera manuais e documentação técnica" },
-];
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+  const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+  const authHeader = req.headers.get("Authorization");
+  const executionId = req.headers.get("x-execution-id") ?? crypto.randomUUID();
+
+  // Escopo compartilhado para o catch
+  let user: any = null;
+  let problem_ids: string[] = [];
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    // ── 1. Auth & Essentials ──────────────────────────────────────────────
+    if (!authHeader) throw new Error("Não autenticado");
 
-    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user: authedUser }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !authedUser) throw new Error("Sessão inválida");
+    user = authedUser;
 
-    // Resolve user
-    let userId: string | null = null;
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader?.startsWith("Bearer ")) {
-      const anonKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || Deno.env.get("SUPABASE_ANON_KEY");
-      const uc = createClient(SUPABASE_URL, anonKey!, { global: { headers: { Authorization: authHeader } } });
-      const token = authHeader.replace("Bearer ", "");
-      const { data: cd } = await uc.auth.getClaims(token);
-      if (cd?.claims?.sub) userId = cd.claims.sub as string;
-    }
-    if (!userId) {
-      try { const b = await req.json(); userId = b?.user_id || null; } catch { /* */ }
-    }
+    const body = await req.json().catch(() => ({}));
+    problem_ids = body.problem_ids || [];
+    const niches = body.niches || ["SaaS", "AI"];
+    const category = body.category;
 
-    let userIds: string[] = [];
-    if (userId) {
-      userIds = [userId];
-    } else {
-      const { data: profiles } = await admin.from("profiles").select("user_id");
-      userIds = (profiles || []).map((p: { user_id: string }) => p.user_id);
-    }
-    if (userIds.length === 0) {
-      return new Response(JSON.stringify({ message: "No users" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    // ── 2. Cache Check ────────────────────────────────────────────────────
+    const { data: cached } = await supabase
+      .from("pipeline_cache")
+      .select("*")
+      .eq("execution_id", executionId)
+      .eq("status", "completed")
+      .maybeSingle();
+
+    if (cached) {
+      console.log(`Cache hit para run-pipeline: ${executionId}`);
+      return new Response(JSON.stringify({ success: true, cached: true, result: cached.opportunity || cached.tools }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const runId = crypto.randomUUID();
+    // ── 3. Start Global Event ─────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "RUN_STARTED",
+      detail: `Iniciando Orquestração do Pipeline (Maestro). Executando 3 estágios.`,
+      user_id: user.id,
+      level: "info",
+    });
 
-    // Helper to log
-    const log = async (uid: string, agent: string, action: string, detail: string, level = "info") => {
-      await admin.from("agent_logs").insert({ user_id: uid, agent_name: agent, action, detail, level, pipeline_run_id: runId });
-    };
+    // Marcar problemas como 'processing'
+    if (problem_ids.length > 0) {
+      await supabase.from("detected_problems").update({ pipeline_status: "processing" }).in("id", problem_ids);
+    }
 
-    // Update agent status helper
-    const setAgentStatus = async (uid: string, agentName: string, status: string) => {
-      await admin.from("agents").update({ status, last_run: new Date().toISOString() }).eq("user_id", uid).eq("agent_name", agentName);
-    };
+    const internalHeaders = { "Authorization": authHeader, "Content-Type": "application/json", "x-execution-id": executionId };
 
-    // Run AI pipeline
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // ── 4. STEP 1: discover-problems ──────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STEP_STARTED",
+      detail: "Estágio 1/3: Expansão de dores e contexto (discover-problems)",
+      user_id: user.id,
+      level: "info",
+    });
+
+    const step1Res = await fetch(`${SUPABASE_URL}/functions/v1/discover-problems`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `Você é uma Squad de Agentes IA do Marques System (Gold Standard 2026). Sua missão é transformar problemas reais em soluções SaaS de alto ROI. 
-Você opera em 3 etapas:
-1. Agente de Código: Desenha a arquitetura técnica e lógica da solução.
-2. Agente de QA: Valida a viabilidade, segurança e propõe melhorias de performance.
-3. Agente de Documentação: Cria o blueprint de implementação e guias de usuário.
-
-Foque nos nichos: IA, Tech, Marketing, Produtividade.
-Proíba terminantemente o uso de n8n, Make ou Zapier. Use apenas Supabase e Agentes Autônomos.`,
-          },
-          {
-            role: "user",
-            content: `Execute a Squad de Agentes para o cenário atual:
-1. Agente de Código — Desenvolva a estrutura baseada no Marques Stack (Lovable + Supabase).
-2. Agente de QA — Valide a segurança (OWASP 2026) e eficiência de custos.
-3. Agente de Documentação — Gere o guia técnico final.
-
-Retorne os resultados detalçados de cada agente E as oportunidades filtradas com nota de ROI.`,
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_pipeline_results",
-              description: "Return full pipeline execution results",
-              parameters: {
-                type: "object",
-                properties: {
-                  agent_steps: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        agent_name: { type: "string" },
-                        action: { type: "string" },
-                        discoveries: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              detail: { type: "string" },
-                              level: { type: "string", enum: ["info", "success", "warn"] },
-                            },
-                            required: ["detail", "level"],
-                            additionalProperties: false,
-                          },
-                        },
-                      },
-                      required: ["agent_name", "action", "discoveries"],
-                      additionalProperties: false,
-                    },
-                  },
-                  opportunities: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string" },
-                        niche: { type: "string" },
-                        problem: { type: "string" },
-                        solution: { type: "string" },
-                        market_score: { type: "number" },
-                        competition_level: { type: "string", enum: ["Low", "Medium", "High"] },
-                        difficulty_level: { type: "string", enum: ["Low", "Medium", "High"] },
-                        roi_efficiency_note: { type: "string" },
-                      },
-                      required: ["title", "niche", "problem", "solution", "market_score", "competition_level", "difficulty_level", "roi_efficiency_note"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["agent_steps", "opportunities"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "return_pipeline_results" } },
+      headers: internalHeaders,
+      body: JSON.stringify({ 
+        niche: niches.join(", "),
+        count: 8 
       }),
     });
 
-    if (!aiResponse.ok) {
-      const t = await aiResponse.text();
-      console.error("AI error:", aiResponse.status, t);
-      if (aiResponse.status === 429 || aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: aiResponse.status === 429 ? "Rate limited" : "Credits exhausted" }), {
-          status: aiResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error("AI gateway error");
+    if (!step1Res.ok) throw new Error(`Falha no Estágio 1: ${step1Res.statusText}`);
+    const step1Data = await step1Res.json();
+
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STATE_DELTA",
+      detail: "Estágio 1 concluído: Contexto de mercado expandido.",
+      user_id: user.id,
+      level: "success",
+    });
+
+    // ── 5. STEP 2: detect-patterns ────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STEP_STARTED",
+      detail: "Estágio 2/3: Detecção de padrões e correlações (detect-patterns)",
+      user_id: user.id,
+      level: "info",
+    });
+
+    const step2Res = await fetch(`${SUPABASE_URL}/functions/v1/detect-patterns`, {
+      method: "POST",
+      headers: internalHeaders,
+      body: JSON.stringify({ category }),
+    });
+
+    if (!step2Res.ok) throw new Error(`Falha no Estágio 2: ${step2Res.statusText}`);
+    const step2Data = await step2Res.json();
+
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STATE_DELTA",
+      detail: `Estágio 2 concluído: ${step2Data.patterns?.length || 0} padrões identificados.`,
+      user_id: user.id,
+      level: "success"
+    });
+
+    // ── 6. STEP 3: generate-opportunities ─────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STEP_STARTED",
+      detail: "Estágio 3/3: Síntese de oportunidades de mercado (generate-opportunities)",
+      user_id: user.id,
+      level: "info",
+    });
+
+    const step3Res = await fetch(`${SUPABASE_URL}/functions/v1/generate-opportunities`, {
+      method: "POST",
+      headers: internalHeaders,
+      body: JSON.stringify({ niches: niches, pattern_context: step2Data.patterns?.[0] || null }),
+    });
+
+    if (!step3Res.ok) throw new Error(`Falha no Estágio 3: ${step3Res.statusText}`);
+    const step3Data = await step3Res.json();
+
+    // ── 7. Finalize ───────────────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "RUN_COMPLETED",
+      detail: "Pipeline de Descoberta concluído com sucesso. Ouro extraído.",
+      user_id: user.id,
+      level: "success",
+    });
+
+    // Marcar problemas como 'completed'
+    if (problem_ids.length > 0) {
+      await supabase.from("detected_problems").update({ pipeline_status: "completed" }).in("id", problem_ids);
     }
 
-    const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call in response");
+    // Salvar no cache master
+    await supabase.from("pipeline_cache").insert({
+      execution_id: executionId,
+      status: "completed",
+      opportunity: step3Data,
+      tools: step2Data.patterns || [],
+    });
 
-    const result = JSON.parse(toolCall.function.arguments);
-    const { agent_steps = [], opportunities = [] } = result;
+    return new Response(JSON.stringify({ 
+      success: true, 
+      patterns: step2Data.patterns,
+      opportunities: step3Data.opportunities
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
 
-    // Process each user
-    for (const uid of userIds) {
-      // Log agent steps
-      for (const step of agent_steps) {
-        await setAgentStatus(uid, step.agent_name, "processing");
-        for (const disc of step.discoveries || []) {
-          await log(uid, step.agent_name, step.action, disc.detail, disc.level);
-        }
-        await setAgentStatus(uid, step.agent_name, "active");
-      }
-
-      // Insert opportunities
-      if (opportunities.length > 0) {
-        const { error } = await admin.from("opportunities").insert(
-          opportunities.map((o: Record<string, unknown>) => ({ ...o, user_id: uid }))
-        );
-        if (!error) {
-          await log(uid, "SaaS Generator", "Pipeline complete", `Generated ${opportunities.length} new opportunities`, "success");
-        }
-      }
-
-      // Final summary log
-      await log(uid, "Pipeline", "Run complete", `Pipeline ${runId.slice(0, 8)} finished — ${agent_steps.length} agents ran, ${opportunities.length} opportunities created`, "success");
+  } catch (err: any) {
+    console.error("run-pipeline error:", err);
+    
+    // Rollback status se erro
+    if (problem_ids && problem_ids.length > 0) {
+      await supabase.from("detected_problems").update({ pipeline_status: "error" }).in("id", problem_ids);
     }
 
-    return new Response(JSON.stringify({
-      pipeline_run_id: runId,
-      agents_executed: agent_steps.length,
-      opportunities_generated: opportunities.length,
-      users_processed: userIds.length,
-      agent_steps,
-      opportunities,
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-  } catch (e) {
-    console.error("run-pipeline error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STATE_DELTA",
+      detail: `Erro no Pipeline: ${err.message}`,
+      user_id: user?.id || null,
+      level: "error",
+    });
+
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

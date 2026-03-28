@@ -6,6 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-execution-id",
 };
 
+// PASSO 2 — Endpoint v1beta com gemini-2.5-flash solicitado pelo usuário
 const GEMINI_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
 
@@ -24,19 +25,24 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    
+    let user = null;
+    let isServiceRole = (token === SERVICE_ROLE_KEY);
 
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Sessão inválida" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!isServiceRole) {
+      const { data: { user: authedUser }, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !authedUser) {
+        return new Response(JSON.stringify({ error: "Sessão inválida ou expirada" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      user = authedUser;
     }
 
     // ── EXECUTION_ID (Idempotência) ───────────────────────────────────────
@@ -78,14 +84,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ── Emit AG-UI STEP_STARTED event ─────────────────────────────────────
-    await supabase.from("agent_activity").insert({
-      execution_id: executionId,
-      event_type: "STEP_STARTED",
-      detail: "Chamando Gemini 2.5 Flash via proxy seguro",
-      user_id: user.id,
-      level: "info",
-    }).then(() => {}).catch(() => {}); // non-blocking — table may not exist yet
+    // ── 8. Emit AG-UI STEP_STARTED event ─────────────────────────────────────
+    if (user || isServiceRole) {
+      await supabase.from("agent_activity").insert({
+        execution_id: executionId,
+        event_type: "STEP_STARTED",
+        detail: "Chamando Gemini 2.5 Flash via proxy seguro",
+        user_id: user?.id ?? null,
+        level: "info",
+      }).catch(() => {});
+    }
 
     // ── Build Gemini Payload ──────────────────────────────────────────────
     const geminiPayload: Record<string, unknown> = {
@@ -109,32 +117,25 @@ Deno.serve(async (req) => {
       body: JSON.stringify(geminiPayload),
     });
 
+    // PASSO 4 — Log explícito do erro do Google solicitado pelo usuário
     if (!geminiRes.ok) {
-      const errText = await geminiRes.text().catch(() => "Erro ilegível");
-      let parsedError: any = {};
-      try { parsedError = JSON.parse(errText); } catch (_) { /* skip */ }
-      const detail = parsedError.error?.message || "Motivo oculto pelo Google";
-      console.error(`Gemini error ${geminiRes.status}:`, detail);
-
-      return new Response(
-        JSON.stringify({ error: `Gemini ${geminiRes.status}: ${detail}`, details: parsedError }),
-        {
-          status: geminiRes.status,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      const errBody = await geminiRes.text();
+      console.error("Gemini error:", geminiRes.status, errBody);
+      throw new Error(`Gemini ${geminiRes.status}: ${errBody}`);
     }
 
     const geminiData = await geminiRes.json();
 
-    // ── Emit AG-UI RUN_STARTED event ──────────────────────────────────────
-    await supabase.from("agent_activity").insert({
-      execution_id: executionId,
-      event_type: "STATE_DELTA",
-      detail: "Gemini respondeu com sucesso",
-      user_id: user.id,
-      level: "info",
-    }).then(() => {}).catch(() => {});
+    // ── Emit AG-UI Success event ──────────────────────────────────────
+    if (user || isServiceRole) {
+      await supabase.from("agent_activity").insert({
+        execution_id: executionId,
+        event_type: "STATE_DELTA",
+        detail: "Gemini respondeu com sucesso",
+        user_id: user?.id ?? null,
+        level: "info",
+      }).catch(() => {});
+    }
 
     return new Response(JSON.stringify(geminiData), {
       status: 200,

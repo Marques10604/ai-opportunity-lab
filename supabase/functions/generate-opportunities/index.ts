@@ -1,135 +1,169 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-execution-id",
 };
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    // ── 1. Auth & Essentials ──────────────────────────────────────────────
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Não autenticado");
 
-    const { niches, trends, tools, pattern_context } = await req.json();
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    const systemPrompt = `You are a SaaS opportunity discovery AI. You analyze market data, problems, niches, and tools to generate viable SaaS startup ideas. Always return structured JSON.`;
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) throw new Error("Sessão inválida");
 
-    let userPrompt: string;
+    const body = await req.json().catch(() => ({}));
+    const { niches, trends, tools, pattern_context } = body;
 
+    // ── 2. EXECUTION_ID (Idempotência) ──────────────────────────────────────
+    const executionId = req.headers.get("x-execution-id") ?? crypto.randomUUID();
+
+    // ── 3. Cache Check ────────────────────────────────────────────────────
+    const { data: cached } = await supabase
+      .from("pipeline_cache")
+      .select("*")
+      .eq("execution_id", executionId)
+      .eq("status", "completed")
+      .maybeSingle();
+
+    if (cached) {
+      console.log(`Cache hit para generate-opportunities: ${executionId}`);
+      return new Response(JSON.stringify({ success: true, cached: true, ...cached.opportunity }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── 4. AG-UI Start Event ──────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "RUN_STARTED",
+      detail: `Sintetizando oportunidades de mercado baseadas em tendências e padrões.`,
+      user_id: user.id,
+      level: "info",
+    });
+
+    // ── 5. Build AI Prompt ────────────────────────────────────────────────
+    const system_instruction = {
+      parts: [{
+        text: `Você é uma IA de descoberta de oportunidades SaaS. 
+Você analisa dados de mercado, problemas, nichos e ferramentas para gerar ideias de startups SaaS viáveis. 
+Sempre retorne JSON estruturado. Use Português (Brasil).`
+      }]
+    };
+
+    let prompt: string;
     if (pattern_context) {
       const { pattern_title, pattern_description, related_problems } = pattern_context;
       const problemsList = (related_problems || []).map((p: any) => `- ${p.title} (viral: ${p.viral_score})`).join("\n");
-      userPrompt = `Based on the following detected problem pattern, generate 3 targeted SaaS opportunities that directly solve this pattern:
+      prompt = `Com base no padrão de problema detectado abaixo, gere 3 oportunidades de SaaS direcionadas:
 
-**Pattern:** ${pattern_title}
-**Description:** ${pattern_description || "N/A"}
-**Related Problems:**
+Padrão: ${pattern_title}
+Descrição: ${pattern_description || "N/A"}
+Problemas Relacionados:
 ${problemsList}
 
-For each opportunity, provide:
-- title: catchy product name
-- niche: target market niche
-- problem: specific pain point directly related to the pattern (2-3 sentences)
-- solution: proposed SaaS solution (2-3 sentences)
-- market_score: 1-100 market potential score
-- competition_level: "Low", "Medium", or "High"
-- difficulty_level: "Low", "Medium", or "High"`;
+Para cada oportunidade, forneça:
+- title: nome do produto
+- niche: nicho de mercado
+- problem: dor específica relacionada ao padrão (2-3 sentenças)
+- solution: proposta de solução SaaS (2-3 sentenças)
+- market_score: score de 1-100
+- competition_level: "Low", "Medium" ou "High"
+- difficulty_level: "Low", "Medium" ou "High"`;
     } else {
-      userPrompt = `Based on the following market intelligence, generate 4 unique SaaS opportunities:
+      prompt = `Com base na inteligência de mercado abaixo, gere 4 oportunidades únicas de SaaS:
 
-**Detected Niches:** ${(niches || ["Developer Tools", "EdTech", "Healthcare", "Creator Economy"]).join(", ")}
-**Market Trends:** ${(trends || ["AI automation", "Remote work tools", "No-code platforms", "API-first products"]).join(", ")}
-**Existing Tools in Market:** ${(tools || ["Notion", "Slack", "Figma", "Zapier", "Stripe"]).join(", ")}
+Nichos Detectados: ${(niches || []).join(", ")}
+Tendências: ${(trends || []).join(", ")}
+Ferramentas Existentes: ${(tools || []).join(", ")}
 
-For each opportunity, provide:
-- title: catchy product name
-- niche: target market niche
-- problem: specific pain point (2-3 sentences)
-- solution: proposed SaaS solution (2-3 sentences)
-- market_score: 1-100 market potential score
-- competition_level: "Low", "Medium", or "High"
-- difficulty_level: "Low", "Medium", or "High"`;
+Para cada oportunidade, forneça:
+- title: nome do produto
+- niche: nicho de mercado
+- problem: dor específica (2-3 sentenças)
+- solution: proposta de solução SaaS (2-3 sentenças)
+- market_score: score de 1-100
+- competition_level: "Low", "Medium" ou "High"
+- difficulty_level: "Low", "Medium" ou "High"`;
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // ── 6. Call Gemini Proxy ──────────────────────────────────────────────
+    const proxyRes = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Authorization": authHeader, "Content-Type": "application/json", "x-execution-id": executionId },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "return_opportunities",
-              description: "Return generated SaaS opportunities",
-              parameters: {
-                type: "object",
-                properties: {
-                  opportunities: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string" },
-                        niche: { type: "string" },
-                        problem: { type: "string" },
-                        solution: { type: "string" },
-                        market_score: { type: "number" },
-                        competition_level: { type: "string", enum: ["Low", "Medium", "High"] },
-                        difficulty_level: { type: "string", enum: ["Low", "Medium", "High"] },
-                      },
-                      required: ["title", "niche", "problem", "solution", "market_score", "competition_level", "difficulty_level"],
-                      additionalProperties: false,
-                    },
-                  },
-                },
-                required: ["opportunities"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "return_opportunities" } },
+        prompt,
+        system_instruction,
+        generationConfig: { responseMimeType: "application/json" },
       }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
-      throw new Error("AI gateway error");
+    if (!proxyRes.ok) throw new Error("Erro ao chamar o proxy da IA");
+
+    const proxyData = await proxyRes.json();
+    const aiText = proxyData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!aiText) throw new Error("IA não retornou conteúdo");
+
+    const result = JSON.parse(aiText);
+    const opportunities = result.opportunities || [];
+
+    // ── 7. Save to DB (Table: opportunities) ─────────────────────────────
+    if (opportunities.length > 0) {
+      const { error: insertError } = await supabase.from("opportunities").insert(
+        opportunities.map((o: any) => ({
+          user_id: user.id,
+          title: o.title || "Sem título",
+          problem: o.problem || null,
+          solution: o.solution || null,
+          niche: o.niche || null,
+          market_score: Math.min(100, Math.max(0, o.market_score || 0)),
+          competition_level: o.competition_level || "Medium",
+          difficulty_level: o.difficulty_level || "Medium",
+        }))
+      );
+      
+      if (insertError) console.error("Error inserting opportunities:", insertError);
     }
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call in response");
+    // ── 8. Log Final & Cache ─────────────────────────────────────────────
+    await supabase.from("agent_activity").insert({
+      execution_id: executionId,
+      event_type: "STATE_DELTA",
+      detail: `Sucesso: ${opportunities.length} novas oportunidades geradas e catalogadas.`,
+      user_id: user.id,
+      level: "info",
+    });
 
-    const parsed = JSON.parse(toolCall.function.arguments);
-    return new Response(JSON.stringify(parsed), {
+    await supabase.from("pipeline_cache").insert({
+      execution_id: executionId,
+      status: "completed",
+      opportunity: result, // Armazena o objeto completo com a lista
+    });
+
+    // ── 9. Return Response ──────────────────────────────────────────────
+    return new Response(JSON.stringify(result), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    console.error("generate-opportunities error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+  } catch (err: any) {
+    console.error("generate-opportunities error:", err);
+    return new Response(JSON.stringify({ error: err.message || "Erro interno" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });

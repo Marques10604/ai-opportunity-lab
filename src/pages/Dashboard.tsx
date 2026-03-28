@@ -94,7 +94,9 @@ export default function Dashboard() {
   const runPainHunter = async () => {
     setPainHunterLoading(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke("pain-hunter", {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
         body: { test_mode: true },
       });
       if (error) throw error;
@@ -147,7 +149,9 @@ export default function Dashboard() {
       addLog("🔍", "Iniciando Caçador de Problemas...");
       addLog("⏱️", "Tempo estimado: ~15-25 segundos");
 
+      const { data: { session: phSession } } = await supabase.auth.getSession();
       const { data: phData, error: phError } = await supabase.functions.invoke("pain-hunter", {
+        headers: { Authorization: `Bearer ${phSession?.access_token}` },
         body: { test_mode: true },
       });
       if (phError) throw new Error(`Caçador de Problemas: ${phError.message}`);

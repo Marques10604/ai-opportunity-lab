@@ -171,8 +171,13 @@ export default function OpportunityRadar() {
     }, 1500);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
       const { data, error: invokeError } = await toast.promise(
         supabase.functions.invoke('pain-hunter', {
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+          },
           body: { niche: selectedNiche === 'Todos' ? 'negocios online' : selectedNiche }
         }),
         {
@@ -196,8 +201,13 @@ export default function OpportunityRadar() {
       }
       
       if (data?.success) {
+         const { data: { session } } = await supabase.auth.getSession();
          queryClient.invalidateQueries({ queryKey: ["detected_problems"] });
-         supabase.functions.invoke('process-pipeline-queue').catch(e => console.error("Erro invoke queue:", e));
+         supabase.functions.invoke('process-pipeline-queue', {
+           headers: {
+             Authorization: `Bearer ${session?.access_token}`,
+           }
+         }).catch(e => console.error("Erro invoke queue:", e));
       }
 
     } catch (err: any) {
@@ -231,8 +241,12 @@ export default function OpportunityRadar() {
 
       // Inicia ou Reinicia o pipeline se estiver travado ou não iniciado
       if (!problemData.pipeline_status || problemData.pipeline_status === 'pending' || problemData.pipeline_status === 'processing') {
+        const { data: { session } } = await supabase.auth.getSession();
         console.log("🚀 Disparando fallback do Pipeline Queue para ID:", problemId);
         supabase.functions.invoke('process-pipeline-queue', { 
+          headers: {
+            Authorization: `Bearer ${session?.access_token}`,
+          },
           body: { userId: user?.id } 
         }).catch(e => console.error("Erro call queue:", e));
 
