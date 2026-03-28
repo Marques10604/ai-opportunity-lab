@@ -104,7 +104,8 @@ As chaves do JSON DEVEM ser estritamente estas recentemente "engessadas":
       "tools_used": ["t1", "t2"],
       "expected_result": "...",
       "content_idea": "...",
-      "video_script": { "hook": "...", "problem": "...", "tools_demo": "...", "solution": "...", "result": "..." }
+      "video_script": { "hook": "...", "problem": "...", "tools_demo": "...", "solution": "...", "result": "..." },
+      "entregavel_cta": "Conteúdo completo do material gratuito (checklist, prompt, guia) prometido no CTA do roteiro."
     }
   ],
   "content_ideas": [
@@ -112,7 +113,8 @@ As chaves do JSON DEVEM ser estritamente estas recentemente "engessadas":
   ]
 }
 
-Responda APENAS com o JSON no formato acima.`;
+Responda APENAS com o JSON no formato acima.
+IMPORTANTE: Sempre que o roteiro de vídeo incluir um CTA oferecendo material gratuito (prompt, checklist, mini-guia), gere também o conteúdo completo desse material na seção 'entregavel_cta'.` ;
 
         try {
             // PASSO 4 — Chamada ao gemini-proxy conforme solicitado pelo usuário
@@ -180,6 +182,7 @@ Responda APENAS com o JSON no formato acima.`;
                 innovation_score: Number(c.impact || c.innovation_score) || 8,
                 content_idea: c.content_idea || "",
                 video_script: typeof c.video_script === 'object' ? c.video_script : null,
+                entregavel_cta: c.entregavel_cta || "",
                 business_idea: c.business_idea || ""
               })));
               if (combError) console.error("Erro ao inserir combinações:", combError);

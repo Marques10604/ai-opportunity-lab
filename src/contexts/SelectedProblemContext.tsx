@@ -10,8 +10,13 @@ type SelectedProblemContextType = {
 const SelectedProblemContext = createContext<SelectedProblemContextType | undefined>(undefined);
 
 export function SelectedProblemProvider({ children }: { children: ReactNode }) {
-  const [selectedProblem, setSelectedProblem] = useState<any | null>(null);
+  const [selectedProblem, setSelectedProblemInternal] = useState<any | null>(null);
   const [selectedPipelineData, setSelectedPipelineData] = useState<any | null>(null);
+
+  const setSelectedProblem = (problem: any | null) => {
+    setSelectedProblemInternal(problem);
+    setSelectedPipelineData(null); // Limpar dados do pipeline ao trocar de problema
+  };
 
   return (
     <SelectedProblemContext.Provider
