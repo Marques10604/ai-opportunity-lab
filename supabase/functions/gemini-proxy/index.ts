@@ -86,13 +86,14 @@ Deno.serve(async (req) => {
 
     // ── 8. Emit AG-UI STEP_STARTED event ─────────────────────────────────────
     if (user || isServiceRole) {
-      await supabase.from("agent_activity").insert({
+      const { error: activityError } = await supabase.from("agent_activity").insert({
         execution_id: executionId,
         event_type: "STEP_STARTED",
         detail: "Chamando Gemini 2.5 Flash via proxy seguro",
         user_id: user?.id ?? null,
         level: "info",
-      }).catch(() => {});
+      });
+      if (activityError) console.error("Erro ao registrar agent_activity (STEP_STARTED):", activityError);
     }
 
     // ── Build Gemini Payload ──────────────────────────────────────────────
@@ -128,13 +129,14 @@ Deno.serve(async (req) => {
 
     // ── Emit AG-UI Success event ──────────────────────────────────────
     if (user || isServiceRole) {
-      await supabase.from("agent_activity").insert({
+      const { error: activityError } = await supabase.from("agent_activity").insert({
         execution_id: executionId,
         event_type: "STATE_DELTA",
         detail: "Gemini respondeu com sucesso",
         user_id: user?.id ?? null,
         level: "info",
-      }).catch(() => {});
+      });
+      if (activityError) console.error("Erro ao registrar agent_activity (STATE_DELTA):", activityError);
     }
 
     return new Response(JSON.stringify(geminiData), {

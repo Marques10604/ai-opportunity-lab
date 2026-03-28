@@ -2,7 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-execution-id",
 };
 
 // Copywriter System Prompt exactly as used in the frontend
@@ -21,10 +21,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-    );
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    const supabaseClient = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
     // 2. Extrai User JWT
     const authHeader = req.headers.get("Authorization");
@@ -32,34 +31,24 @@ Deno.serve(async (req) => {
       throw new Error("Missing Authorization header");
     }
     
-    const userClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    // Usar SERVICE_ROLE para garantir acesso mas carregar o usuário
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser(authHeader.replace("Bearer ", ""));
+    const userId = user?.id;
     
-    let userId = "";
-    try {
-      const { data: { user }, error: userError } = await userClient.auth.getUser();
-      if (userError || !user) throw new Error("Não autorizado");
-      userId = user.id;
-    } catch (e) {
-      const bodyText = await req.clone().text();
-      if (bodyText) {
-        const bodyObj = JSON.parse(bodyText);
-        if (bodyObj.userId) userId = bodyObj.userId;
-      }
-      if (!userId) {
-        throw new Error("Cannot determine user_id for the background job");
-      }
+    if (!userId && !authHeader.includes(SERVICE_ROLE_KEY)) {
+        throw new Error("Não foi possível determinar o user_id para o job de background.");
     }
+
+    const currentUserId = userId || (await req.json().catch(() => ({}))).userId;
+
+    if (!currentUserId) throw new Error("Missing userId");
 
     // 3. Pegar próximos 5 problemas pendentes (LIMIT 5)
     const { data: pendingProblems, error: fetchError } = await supabaseClient
       .from("detected_problems")
       .select("*")
       .eq("pipeline_status", "pending")
-      .eq("user_id", userId)
+      .eq("user_id", currentUserId)
       .limit(5);
 
     if (fetchError) throw fetchError;
@@ -78,13 +67,16 @@ Deno.serve(async (req) => {
 
     for (let i = 0; i < pendingProblems.length; i++) {
         const problemData = pendingProblems[i];
+        const executionId = crypto.randomUUID();
         console.log(`[Queue] Iniciando Processamento (${i + 1}/${pendingProblems.length}): ${problemData.problem_title}`);
 
         // Mudar status para 'processing' individualmente
-        await supabaseClient
+        const { error: updateStatusError } = await supabaseClient
           .from("detected_problems")
           .update({ pipeline_status: "processing" })
           .eq("id", problemData.id);
+        
+        if (updateStatusError) console.error("Erro ao atualizar status para processing:", updateStatusError);
 
         const prompt = `Você é um estrategista de conteúdo e negócios AI-First de ELITE.
 Analise este problema único e gere o pipeline completo.
@@ -120,59 +112,66 @@ As chaves do JSON DEVEM ser estritamente estas recentemente "engessadas":
   ]
 }
 
-IMPORTANTE: Garanta que as listas sejam SEMPRE ARRAYS, mesmo que vazios.
 Responda APENAS com o JSON no formato acima.`;
 
         try {
-            const geminiApiKey = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("GOOGLE_API_KEY");
-            const geminiRes = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt }] }],
-                  systemInstruction: { parts: [{ text: COPYWRITER_SYSTEM_PROMPT }] },
-                  generationConfig: { responseMimeType: "application/json" }
-                })
-              }
-            );
+            // PASSO 4 — Chamada ao gemini-proxy conforme solicitado pelo usuário
+            const proxyRes = await fetch(`${SUPABASE_URL}/functions/v1/gemini-proxy`, {
+              method: "POST",
+              headers: { 
+                  "Authorization": `Bearer ${SERVICE_ROLE_KEY}`, 
+                  "Content-Type": "application/json",
+                  "x-execution-id": executionId
+              },
+              body: JSON.stringify({
+                prompt,
+                system_instruction: { parts: [{ text: COPYWRITER_SYSTEM_PROMPT }] },
+                generationConfig: { responseMimeType: "application/json" }
+              })
+            });
 
-            if (!geminiRes.ok) {
-              const errData = await geminiRes.json();
-              throw new Error(errData.error?.message || `HTTP ${geminiRes.status}`);
+            if (!proxyRes.ok) {
+              const errText = await proxyRes.text();
+              throw new Error(`AI Error no Queue: ${errText}`);
             }
 
-            const resData = await geminiRes.json();
-            const aiText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+            const proxyData = await proxyRes.json();
+            const aiText = proxyData.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            if (!aiText) {
+                throw new Error("A IA retornou uma resposta vazia (undefined). Verifique os limites de cota.");
+            }
+
             const cleanedJson = aiText.replace(/```json|```/g, "").trim();
             const result = JSON.parse(cleanedJson);
 
             const mindset = result.mindset_classification || "SaaS Tradicional";
             console.log(`[Queue] Sucesso AI: [${mindset}] para Problem ID: ${problemData.id}`);
 
-            // 6. Inserir resultados (Mapping English -> DB)
-            await supabaseClient
+            // 6. Inserir resultados (Padrão desestruturado { data, error })
+            const { error: mindsetError } = await supabaseClient
               .from("detected_problems")
               .update({ mindset_classification: mindset })
               .eq("id", problemData.id);
+            if (mindsetError) console.error("Erro ao atualizar mindset:", mindsetError);
 
             const tools = Array.isArray(result.discovered_tools) ? result.discovered_tools : [];
             if (tools.length > 0) {
-              await supabaseClient.from("tools").insert(tools.map((t: any) => ({
-                user_id: userId,
+              const { error: toolsError } = await supabaseClient.from("tools").insert(tools.map((t: any) => ({
+                user_id: currentUserId,
                 source_problem_id: problemData.id,
                 tool_name: t.name || t.tool_name || "Ferramenta Desconhecida",
                 category: t.category || "Geral",
                 description: t.description || "",
                 website: t.website || ""
               })));
+              if (toolsError) console.error("Erro ao inserir ferramentas:", toolsError);
             }
 
             const combinations = Array.isArray(result.combinations) ? result.combinations : [];
             if (combinations.length > 0) {
-              await supabaseClient.from("tool_combinations").insert(combinations.map((c: any) => ({
-                user_id: userId,
+              const { error: combError } = await supabaseClient.from("tool_combinations").insert(combinations.map((c: any) => ({
+                user_id: currentUserId,
                 source_problem_id: problemData.id,
                 solution_name: c.name || c.solution_name || "Solução Proposta",
                 solution_description: c.description || c.solution_description || "",
@@ -183,6 +182,7 @@ Responda APENAS com o JSON no formato acima.`;
                 video_script: typeof c.video_script === 'object' ? c.video_script : null,
                 business_idea: c.business_idea || ""
               })));
+              if (combError) console.error("Erro ao inserir combinações:", combError);
             }
 
             const contentIdeas = Array.isArray(result.content_ideas) ? result.content_ideas : [];
@@ -193,7 +193,7 @@ Responda APENAS com o JSON no formato acima.`;
                 ["instagram", "tiktok", "linkedin", "twitter", "youtube"].forEach(p => {
                   const pKey = p === "twitter" ? "x" : p;
                   rows.push({
-                    user_id: userId,
+                    user_id: currentUserId,
                     source_problem_id: problemData.id,
                     dor_titulo: idea.title || problemData.problem_title,
                     angulo: idea.type || idea.angle || "Geral",
@@ -203,27 +203,33 @@ Responda APENAS com o JSON no formato acima.`;
                   });
                 });
               });
-              if (rows.length > 0) await supabaseClient.from("calendario_conteudo").insert(rows);
+              if (rows.length > 0) {
+                  const { error: contentError } = await supabaseClient.from("calendario_conteudo").insert(rows);
+                  if (contentError) console.error("Erro ao inserir calendário:", contentError);
+              }
             }
 
-            await supabaseClient.from("content_opportunities").insert({
-              user_id: userId,
+            const { error: oppError } = await supabaseClient.from("content_opportunities").insert({
+              user_id: currentUserId,
               source_problem_id: problemData.id,
               titulo_conteudo: problemData.problem_title,
               tipo_conteudo: `Pipeline [${mindset}]`
             });
+            if (oppError) console.error("Erro ao inserir oportunidade:", oppError);
 
-            await supabaseClient
+            const { error: finalStatusError } = await supabaseClient
               .from("detected_problems")
               .update({ pipeline_status: "completed" })
               .eq("id", problemData.id);
+            if (finalStatusError) console.error("Erro ao finalizar status:", finalStatusError);
 
         } catch (e: any) {
             console.error(`[Queue] Erro no item ${problemData.id}:`, e.message);
-            await supabaseClient
+            const { error: rollbackError } = await supabaseClient
               .from("detected_problems")
               .update({ pipeline_status: "error", pipeline_error: e.message })
               .eq("id", problemData.id);
+            if (rollbackError) console.error("Erro no rollback de status:", rollbackError);
         }
 
         // Delay de 6 segundos para não estourar 429 na Free Tier (Limite 15 RPM)
@@ -233,23 +239,25 @@ Responda APENAS com o JSON no formato acima.`;
         }
     }
 
-    // 8. Self-Invoke if needed after full sequential processing
-    const { count } = await supabaseClient
+    // 8. Self-Invoke if needed
+    const { count, error: countError } = await supabaseClient
       .from("detected_problems")
       .select("*", { count: 'exact', head: true })
       .eq("pipeline_status", "pending")
-      .eq("user_id", userId);
+      .eq("user_id", currentUserId);
+
+    if (countError) console.error("Erro ao verificar fila pendente:", countError);
 
     if (count && count > 0) {
       console.log(`[Queue] Ainda existem ${count} pendentes. Auto-invocando em 10s...`);
       setTimeout(() => {
-        fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/process-pipeline-queue`, {
+        fetch(`${SUPABASE_URL}/functions/v1/process-pipeline-queue`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`
+            "Authorization": `Bearer ${SERVICE_ROLE_KEY}`
           },
-          body: JSON.stringify({ userId: userId })
+          body: JSON.stringify({ userId: currentUserId })
         }).catch(e => console.error("Self-Invoke Error:", e));
       }, 10000); 
     }
