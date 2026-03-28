@@ -5,7 +5,7 @@ import {
   Search, Loader2, AlertTriangle, Globe,
   Zap, TrendingUp, Flame, Tag, Wrench, ChevronDown, ChevronUp,
   Filter, Layers, ArrowRight, Lightbulb, Film, Sparkles, ExternalLink, Database, CheckCircle2,
-  RefreshCw, Clock
+  RefreshCw, Clock, FileText
 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -301,6 +301,7 @@ export default function OpportunityRadar() {
             innovation_score: c.innovation_score,
             content_idea: c.content_idea,
             video_script: c.video_script,
+            entregavel_cta: c.entregavel_cta,
             business_idea: c.business_idea
           })) || [],
           video_script: scriptRes.data ? {
@@ -759,6 +760,18 @@ export default function OpportunityRadar() {
                                         </div>
                                      )}
                                 </div>
+
+                                {/* Material Gratuito (Novo: Lead Magnet) */}
+                                {combo.entregavel_cta && (
+                                    <div className="mt-4 space-y-3">
+                                        <h5 className="text-[11px] uppercase tracking-wider text-muted-foreground/60 font-semibold flex items-center gap-1.5 text-success">
+                                            <FileText className="h-3.5 w-3.5" /> Material do CTA (Lead Magnet)
+                                        </h5>
+                                        <div className="bg-success/5 border border-dashed border-success/30 rounded-lg p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed shadow-inner text-foreground/90">
+                                            {combo.entregavel_cta}
+                                        </div>
+                                    </div>
+                                )}
                              </div>
                            </motion.div>
                          )}

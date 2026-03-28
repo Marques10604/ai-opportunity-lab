@@ -220,6 +220,20 @@ IMPORTANTE: Sempre que o roteiro de vídeo incluir um CTA oferecendo material gr
             });
             if (oppError) console.error("Erro ao inserir oportunidade:", oppError);
 
+            // 7. Disparar geração de oportunidades (SaaS)
+            fetch(`${SUPABASE_URL}/functions/v1/generate-opportunities`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                niches: [problemData.niche_category || "Geral"],
+                tools: tools.map((t: any) => t.name || t.tool_name),
+                trends: [problemData.problem_title],
+              })
+            }).catch(e => console.error("Error triggering generate-opportunities:", e));
+
             const { error: finalStatusError } = await supabaseClient
               .from("detected_problems")
               .update({ pipeline_status: "completed" })
